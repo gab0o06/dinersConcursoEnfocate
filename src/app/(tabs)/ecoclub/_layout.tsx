@@ -1,4 +1,4 @@
-import { Colors } from "@/constants/theme";
+import { COLORS } from "@/constants/theme";
 import { Stack } from "expo-router";
 
 export default function EcoClubLayout() {
@@ -8,7 +8,7 @@ export default function EcoClubLayout() {
         // Ocultamos el header nativo para maquetar el nuestro propio y clavar el diseño
         headerShown: false,
         // Un fondo por defecto para que las transiciones se vean limpias
-        contentStyle: { backgroundColor: Colors.background },
+        contentStyle: { backgroundColor: COLORS.background },
         // Animación suave al entrar a los detalles
         animation: "slide_from_right",
       }}

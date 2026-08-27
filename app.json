@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ecoClub",
-    "slug": "ecoClub",
+    "name": "ecoclub",
+    "slug": "ecoclub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
