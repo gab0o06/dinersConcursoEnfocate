@@ -1,7 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../constants/ecoColors';
-import EcoGauge from './EcoGauge';
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
+import EcoGauge from "./EcoGauge";
 
 type Props = {
   co2Value: number;
@@ -33,12 +33,21 @@ export default function ValidationCard({
 
       <View style={styles.multiplierRow}>
         <Text style={styles.multiplierText}>
-          Multiplicador {multiplierActive ? 'activado' : 'desactivado'}
+          Multiplicador {multiplierActive ? "activo" : "desactivado"}
         </Text>
-        {FireIcon}
+        {FireIcon || (
+          <MaterialCommunityIcons
+            name="fire"
+            size={18}
+            color={multiplierActive ? "#D32F2F" : "#B0B0B0"}
+          />
+        )}
       </View>
       <Text style={styles.billingText}>
-        Facturación este mes: ${billingCurrent} / ${billingMin} mínimo
+        Facturación este mes:{" "}
+        <Text style={styles.billingBold}>
+          ${billingCurrent} / ${billingMin} mínimo
+        </Text>
       </Text>
     </View>
   );
@@ -46,26 +55,58 @@ export default function ValidationCard({
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: colors.white,
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.greenLight,
+    borderColor: "#A2C7B4", // Borde verde claro
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
+    marginHorizontal: 20, // Alineado con el contenedor del EcoScreen
+    marginBottom: 16,
   },
-  title: { fontSize: 18, fontWeight: '800', color: colors.black, alignSelf: 'flex-start' },
-  subtitle: { fontSize: 12, color: colors.gray, alignSelf: 'flex-start', marginTop: 2, marginBottom: 8 },
-  gaugeWrap: { marginVertical: 8 },
-  footnote: { fontSize: 11, color: colors.gray, marginTop: 4 },
+  title: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+    alignSelf: "flex-start",
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 11,
+    color: "#555",
+    alignSelf: "flex-start",
+    marginTop: 2,
+  },
+  gaugeWrap: {
+    marginVertical: 16,
+    alignItems: "center",
+    width: "100%",
+  },
+  footnote: {
+    fontSize: 10,
+    color: "#555",
+    marginTop: 4,
+    marginBottom: 16,
+  },
   multiplierRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
   },
-  multiplierText: { fontSize: 13, fontWeight: '600', color: colors.black },
-  billingText: { fontSize: 12, color: colors.gray, alignSelf: 'flex-start', marginTop: 4 },
+  multiplierText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#000",
+  },
+  billingText: {
+    fontSize: 11,
+    color: "#333",
+    alignSelf: "flex-start",
+    marginTop: 4,
+  },
+  billingBold: {
+    fontWeight: "800",
+    color: "#000",
+  },
 });

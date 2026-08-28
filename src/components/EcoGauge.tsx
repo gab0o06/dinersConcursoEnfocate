@@ -1,32 +1,24 @@
 import { StyleSheet, Text, View } from "react-native";
-// import Svg, { Circle } from 'react-native-svg';
-import { colors } from "../constants/ecoColors";
+import Svg, { Circle } from "react-native-svg";
 
 type Props = {
-  value: number; // ej. 5.2
-  max: number; // ej. 8
-  unit?: string; // ej. "kg CO2"
-  size?: number;
-  strokeWidth?: number;
+  value: number;
+  max: number;
 };
 
-export default function EcoGauge({
-  value,
-  max,
-  unit = "kg\nCO2",
-  size = 200,
-  strokeWidth = 16,
-}: Props) {
+export default function EcoGauge({ value, max }: Props) {
+  const size = 140;
+  const strokeWidth = 14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  // Arco de 270° (dejamos 90° abiertos abajo, como un velocímetro)
-  const arcRatio = 0.75;
-  const arcLength = circumference * arcRatio;
-  const progress = Math.min(value / max, 1);
-  const progressLength = arcLength * progress;
+  // Queremos que el círculo ocupe 270 grados (dejando un hueco de 90 grados abajo)
+  const angle = 270;
+  const arcLength = (circumference * angle) / 360;
 
-  const rotation = 135; // punto de inicio del arco
+  // Cálculo del progreso actual
+  const progressRatio = Math.min(value / max, 1);
+  const strokeDashoffset = arcLength - arcLength * progressRatio;
 
   return (
     <View
@@ -37,36 +29,42 @@ export default function EcoGauge({
         justifyContent: "center",
       }}
     >
-      {/* <Svg width={size} height={size}> */}
-      {/* Track de fondo
+      <Svg width={size} height={size}>
+        {/* Pista de fondo (Gris) */}
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.track}
+          stroke="#8A8A8A" // Gris del diseño
           strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={`${arcLength}, ${circumference}`}
           strokeLinecap="round"
-          transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
+          strokeDasharray={`${arcLength} ${circumference}`}
+          rotation={135} // Rotamos para que el hueco quede simétrico abajo
+          origin={`${size / 2}, ${size / 2}`}
+          fill="transparent"
         />
-        {/* Progreso */}
-      {/* <Circle
+        {/* Pista de progreso (Verde) */}
+        <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.green}
+          stroke="#1E754C" // Verde EcoClub
           strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={`${progressLength}, ${circumference}`}
           strokeLinecap="round"
-          transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
+          strokeDasharray={`${arcLength} ${circumference}`}
+          strokeDashoffset={circumference - arcLength + strokeDashoffset}
+          rotation={135}
+          origin={`${size / 2}, ${size / 2}`}
+          fill="transparent"
         />
-      </Svg> */}
-      <View style={StyleSheet.absoluteFill as any} pointerEvents="none">
-        <View style={styles.center}>
-          <Text style={styles.value}>{value}</Text>
-          <Text style={styles.unit}>{unit}</Text>
+      </Svg>
+
+      {/* Contenido Central */}
+      <View style={styles.centerContent}>
+        <Text style={styles.valueText}>{value} kg</Text>
+        <View style={styles.co2Container}>
+          <Text style={styles.co2Text}>CO</Text>
+          <Text style={styles.subscript}>2</Text>
         </View>
       </View>
     </View>
@@ -74,12 +72,29 @@ export default function EcoGauge({
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  value: { fontSize: 32, fontWeight: "800", color: colors.black },
-  unit: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.black,
-    textAlign: "center",
+  centerContent: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  valueText: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#000",
+  },
+  co2Container: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+  },
+  co2Text: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#000",
+  },
+  subscript: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#000",
+    marginBottom: -2, // Baja el "2" para simular subíndice
   },
 });
