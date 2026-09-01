@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +14,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
+
+// OBLIGATORIO: Cierra el navegador al recibir la respuesta de Strava
+WebBrowser.maybeCompleteAuthSession();
 
 const STRAVA_CLIENT_ID = process.env.EXPO_PUBLIC_STRAVA_CLIENT_ID;
 const STRAVA_CLIENT_SECRET = process.env.EXPO_PUBLIC_STRAVA_CLIENT_SECRET;
@@ -42,6 +46,7 @@ export default function KmVerdesScreen() {
   // Configuración de la sesión OAuth2
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: "ecoclub",
+    path: "ecoclub/km-verdes",
   });
 
   console.log("Tu Redirect URI es:", redirectUri);
