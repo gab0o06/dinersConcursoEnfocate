@@ -51,9 +51,7 @@
     "format": "prettier --write ."
   },
   "private": true,
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "unrs-resolver"
-    ]
-  }
+  "onlyBuiltDependencies": [
+    "unrs-resolver"
+  ]
 }
