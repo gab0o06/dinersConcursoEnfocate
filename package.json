@@ -50,8 +50,5 @@
     "tunnel": "expo start --tunnel",
     "format": "prettier --write ."
   },
-  "private": true,
-  "onlyBuiltDependencies": [
-    "unrs-resolver"
-  ]
+  "private": true
 }
