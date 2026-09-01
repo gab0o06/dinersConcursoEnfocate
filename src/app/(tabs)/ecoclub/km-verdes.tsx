@@ -1,7 +1,8 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  Dimensions,
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,30 +12,96 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
 
-const { width } = Dimensions.get("window");
+// Lee el token directamente de tus variables de entorno
+const STRAVA_ACCESS_TOKEN = process.env.EXPO_PUBLIC_STRAVA_ACCESS_TOKEN;
 
-// Datos falsos para el gráfico
-const weeklyData = [
-  { day: "L", km: 35 },
-  { day: "M", km: 75 },
-  { day: "Mi", km: 50 },
-  { day: "J", km: 90 },
-  { day: "V", km: 30 },
-  { day: "S", km: 45 },
-  { day: "D", km: 65 },
-];
-
-const rankingData = [
-  { id: 1, name: "Gabriel Alm", km: "50 Km" },
-  { id: 2, name: "Jose Garces", km: "48 Km" },
-  { id: 3, name: "Jose Lopez", km: "47 Km" },
-  { id: 4, name: "Juan Pablo E.", km: "46 Km" },
-  { id: 5, name: "Mateo Sosa", km: "46 Km" },
-  { id: 6, name: "Miguel Bucheli", km: "44 Km" },
-];
-
+interface StravaActivity {
+  id: number;
+  name: string;
+  type: string;
+  distance: number;
+  moving_time: number;
+  start_date_local: string;
+}
 export default function KmVerdesScreen() {
   const router = useRouter();
+  const [totalKm, setTotalKm] = useState(0);
+  const [activities, setActivities] = useState<StravaActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchStravaActivities = async () => {
+      try {
+        const res = await fetch(
+          "https://www.strava.com/api/v3/athlete/activities?per_page=30",
+          {
+            headers: { Authorization: `Bearer ${STRAVA_ACCESS_TOKEN}` },
+          },
+        );
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+          const filtered = data.filter(
+            (act) =>
+              act.type === "Run" || act.type === "Walk" || act.type === "Ride",
+          );
+
+          const totalMeters = filtered.reduce(
+            (acc, curr) => acc + curr.distance,
+            0,
+          );
+
+          if (isMounted) {
+            setTotalKm(Number((totalMeters / 1000).toFixed(1)));
+            setActivities(filtered);
+          }
+        }
+      } catch (error) {
+        console.error("Error obteniendo actividades:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchStravaActivities();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("es-EC", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case "Ride":
+        return "bicycle-outline";
+      case "Run":
+        return "fitness-outline";
+      default:
+        return "walk-outline";
+    }
+  };
+
+  const metaKm = 35;
+  const progressPercentage = Math.min((totalKm / metaKm) * 100, 100);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,7 +116,6 @@ export default function KmVerdesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        {/* Título y Puntos */}
         <View style={styles.headerRow}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -60,93 +126,80 @@ export default function KmVerdesScreen() {
               <Text style={{ fontWeight: "800" }}>Km Verdes</Text> - Strava
             </Text>
           </TouchableOpacity>
-
-          <View style={styles.pointsEarned}>
-            <MaterialCommunityIcons
-              name="leaf"
-              size={20}
-              color="#111"
-              style={{ transform: [{ scaleX: -1 }] }}
-            />
-            <View>
-              <Text style={styles.pointsValue}>
-                700{" "}
-                <Text style={{ fontWeight: "400", fontSize: 12 }}>
-                  EcoPoints
-                </Text>
-              </Text>
-              <Text style={styles.pointsLabel}>ganados</Text>
-            </View>
-          </View>
         </View>
 
-        {/* Gráfico de Barras Personalizado */}
-        <View style={styles.chartContainer}>
-          <Text style={styles.yAxisLabel}>Km</Text>
-          <View style={styles.barsRow}>
-            {weeklyData.map((item, index) => (
-              <View key={index} style={styles.barWrapper}>
-                <View style={[styles.barFill, { height: item.km * 1.5 }]} />
-                <Text style={styles.dayLabel}>{item.day}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.chartBaseLine} />
-        </View>
-
-        {/* Estadísticas de progreso */}
         <View style={styles.statsContainer}>
-          <Text style={styles.kmSummary}>27 / 35</Text>
-          <Text style={styles.kmLabel}>Km recorridos</Text>
+          {isLoading ? (
+            <ActivityIndicator
+              size="large"
+              color="#1E754C"
+              style={{ marginVertical: 20 }}
+            />
+          ) : (
+            <>
+              <Text style={styles.kmSummary}>
+                {totalKm} / {metaKm}
+              </Text>
+              <Text style={styles.kmLabel}>Km recorridos (Strava)</Text>
 
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: "65%" }]} />
-          </View>
-        </View>
-
-        {/* Sección de Ranking */}
-        <View style={styles.rankingSection}>
-          <Text style={styles.sectionTitle}>Ranking Mensual</Text>
-
-          <View style={styles.rankingCard}>
-            {rankingData.map((user, index) => (
-              <View
-                key={user.id}
-                style={[
-                  styles.rankingRow,
-                  index === rankingData.length - 1 && { borderBottomWidth: 0 },
-                ]}
-              >
-                <View style={styles.userInfo}>
-                  <Text style={styles.rankNumber}>{user.id}.</Text>
-                  <Ionicons
-                    name="person-circle-outline"
-                    size={28}
-                    color="#555"
-                  />
-                  <Text style={styles.userName}>{user.name}</Text>
-                </View>
-                <Text style={styles.userKm}>{user.km}</Text>
+              <View style={styles.progressBarBackground}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    { width: `${progressPercentage}%` },
+                  ]}
+                />
               </View>
-            ))}
-          </View>
+            </>
+          )}
         </View>
 
-        {/* Espaciador inferior para el Tab Bar */}
-        <View style={{ height: 120 }} />
+        {/* Sección de Historial de Actividades */}
+        <View style={styles.historySection}>
+          <Text style={styles.sectionTitle}>Actividades Recientes</Text>
+
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#1E754C" />
+          ) : activities.length === 0 ? (
+            <Text style={styles.emptyText}>
+              No hay actividades registradas.
+            </Text>
+          ) : (
+            activities.map((item) => (
+              <View key={item.id} style={styles.activityCard}>
+                <View style={styles.iconContainer}>
+                  <Ionicons
+                    name={getActivityIcon(item.type)}
+                    size={24}
+                    color="#1E754C"
+                  />
+                </View>
+
+                <View style={styles.activityDetails}>
+                  <Text style={styles.activityName}>{item.name}</Text>
+                  <Text style={styles.activityDate}>
+                    {formatDate(item.start_date_local)} •{" "}
+                    {formatDuration(item.moving_time)}
+                  </Text>
+                </View>
+
+                <View style={styles.distanceBadge}>
+                  <Text style={styles.distanceText}>
+                    {(item.distance / 1000).toFixed(2)} km
+                  </Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  scroll: {
-    paddingBottom: 20,
-  },
+  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  scroll: { paddingBottom: 30 },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -155,89 +208,17 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 20,
   },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 20,
-    color: "#000",
-    marginLeft: 4,
-  },
-  pointsEarned: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  pointsValue: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#000",
-  },
-  pointsLabel: {
-    fontSize: 12,
-    color: "#333",
-    textAlign: "right",
-    marginTop: -4,
-  },
-  chartContainer: {
-    height: 220,
-    marginHorizontal: 20,
-    paddingTop: 20,
-    position: "relative",
-  },
-  yAxisLabel: {
-    position: "absolute",
-    left: -10,
-    top: 80,
-    transform: [{ rotate: "-90deg" }],
-    fontSize: 12,
-    color: "#555",
-  },
-  barsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    height: 150,
-    paddingHorizontal: 10,
-  },
-  barWrapper: {
-    alignItems: "center",
-    width: 30,
-  },
-  barFill: {
-    width: 18,
-    backgroundColor: "#277855",
-    borderRadius: 10,
-  },
-  dayLabel: {
-    marginTop: 10,
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#000",
-  },
-  chartBaseLine: {
-    height: 1.5,
-    backgroundColor: "#000",
-    width: "100%",
-    marginTop: 2,
-  },
+  backButton: { flexDirection: "row", alignItems: "center" },
+  title: { fontSize: 20, color: "#000", marginLeft: 4 },
   statsContainer: {
     alignItems: "center",
     marginTop: 10,
     paddingHorizontal: 20,
+    minHeight: 100,
+    justifyContent: "center",
   },
-  kmSummary: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-  },
-  kmLabel: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 12,
-  },
+  kmSummary: { fontSize: 24, fontWeight: "800", color: "#000" },
+  kmLabel: { fontSize: 14, fontWeight: "800", color: "#000", marginBottom: 15 },
   progressBarBackground: {
     width: "100%",
     height: 18,
@@ -250,48 +231,66 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E754C",
     borderRadius: 10,
   },
-  rankingSection: {
+  historySection: {
     marginTop: 30,
     paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "400",
-    color: "#000",
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0A1C40",
     marginBottom: 15,
   },
-  rankingCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#A2C7B4",
-    padding: 10,
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 10,
   },
-  rankingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#EAEAEA",
-  },
-  userInfo: {
+  activityCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    backgroundColor: "#FFFFFF",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  rankNumber: {
-    fontSize: 18,
-    fontWeight: "800",
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  activityDetails: {
+    flex: 1,
+  },
+  activityName: {
+    fontSize: 15,
+    fontWeight: "700",
     color: "#000",
-    width: 25,
   },
-  userName: {
-    fontSize: 14,
-    color: "#333",
+  activityDate: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
   },
-  userKm: {
+  distanceBadge: {
+    backgroundColor: "#F0F4F8",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  distanceText: {
     fontSize: 14,
-    color: "#333",
+    fontWeight: "800",
+    color: "#1E754C",
   },
 });

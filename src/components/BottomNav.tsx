@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { colors } from '../constants/ecoColors';
+import React from "react";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { colors } from "../constants/ecoColors";
 
 type Props = {
   HomeIcon?: React.ReactNode;
@@ -13,7 +13,13 @@ type Props = {
 };
 
 export default function BottomNav({
-  HomeIcon, WalletIcon, LeafIcon, GridIcon, ProfileIcon, activeIndex = 2, onPressItem,
+  HomeIcon,
+  WalletIcon,
+  LeafIcon,
+  GridIcon,
+  ProfileIcon,
+  activeIndex = 2,
+  onPressItem,
 }: Props) {
   const items = [HomeIcon, WalletIcon, LeafIcon, GridIcon];
 
@@ -30,7 +36,10 @@ export default function BottomNav({
           </TouchableOpacity>
         ))}
       </View>
-      <TouchableOpacity onPress={() => onPressItem?.(4)} style={styles.profileCircle}>
+      <TouchableOpacity
+        onPress={() => onPressItem?.(4)}
+        style={styles.profileCircle}
+      >
         {ProfileIcon}
       </TouchableOpacity>
     </View>
@@ -39,29 +48,38 @@ export default function BottomNav({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 16,
     left: 16,
     right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   barGroup: {
-    flexDirection: 'row',
-    backgroundColor: '#F6E9E9',
+    flexDirection: "row",
+    backgroundColor: "#F6E9E9",
     borderRadius: 30,
     paddingHorizontal: 18,
     paddingVertical: 10,
     gap: 22,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  item: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  item: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   itemActive: { backgroundColor: colors.green, borderRadius: 16 },
   profileCircle: {
-    width: 46, height: 46, borderRadius: 23,
-    borderWidth: 2, borderColor: colors.navy,
-    alignItems: 'center', justifyContent: 'center',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: colors.navy,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.white,
   },
 });
