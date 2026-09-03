@@ -12,7 +12,16 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "PNPM_CONFIG_ONLY_BUILT_DEPENDENCIES": "unrs-resolver",
+        "EXPO_PUBLIC_STRAVA_CLIENT_ID": "",
+        "EXPO_PUBLIC_STRAVA_CLIENT_SECRET": ""
+      }
     },
     "production": {
       "autoIncrement": true
