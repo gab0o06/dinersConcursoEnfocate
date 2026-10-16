@@ -12,42 +12,45 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
-
-// --- Datos de Ejemplo ---
-const historyData = [
-  {
-    id: "1",
-    time: "10:23",
-    date: "25/06/2026",
-    action: "Recarga Metro",
-    points: "+ 150 pts",
-  },
-  {
-    id: "2",
-    time: "10:23",
-    date: "25/06/2026",
-    action: "Recarga Metro",
-    points: "+ 150 pts",
-  },
-  {
-    id: "3",
-    time: "10:23",
-    date: "25/06/2026",
-    action: "Recarga Metro",
-    points: "+ 150 pts",
-  },
-  {
-    id: "4",
-    time: "10:23",
-    date: "25/06/2026",
-    action: "Recarga Metro",
-    points: "+ 150 pts",
-  },
-];
+import { useEcoStore } from "../../../store/useEcoStore";
 
 export default function MetroDinersScreen() {
   const router = useRouter();
   const [autoRecharge, setAutoRecharge] = useState(true);
+
+  // — Store: transacciones del Metro (MCC 4111) —
+  const scoredTransactions = useEcoStore((s) => s.scoredTransactions);
+
+  const metroTransactions = scoredTransactions
+    .filter((tx) => tx.category === "metro")
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalMetroPoints = metroTransactions.reduce(
+    (acc, tx) => acc + tx.ecoPoints,
+    0,
+  );
+
+  // Nivel basado en cantidad de recargas
+  const rechargeCount = metroTransactions.length;
+  const getLevel = () => {
+    if (rechargeCount >= 15) return { name: "Guardián", next: null, progress: 1 };
+    if (rechargeCount >= 10) return { name: "Explorador", next: "Guardián", progress: rechargeCount / 15 };
+    return { name: "Pasajero", next: "Explorador", progress: rechargeCount / 10 };
+  };
+  const level = getLevel();
+
+  const formatDate = (date: Date) =>
+    new Date(date).toLocaleDateString("es-EC", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+  const formatTime = (date: Date) =>
+    new Date(date).toLocaleTimeString("es-EC", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -81,10 +84,8 @@ export default function MetroDinersScreen() {
             />
             <View>
               <Text style={styles.pointsValue}>
-                200{" "}
-                <Text style={{ fontWeight: "400", fontSize: 12 }}>
-                  EcoPoints
-                </Text>
+                {totalMetroPoints}{" "}
+                <Text style={{ fontWeight: "400", fontSize: 12 }}>EcoPoints</Text>
               </Text>
               <Text style={styles.pointsLabel}>ganados</Text>
             </View>
@@ -93,7 +94,6 @@ export default function MetroDinersScreen() {
 
         {/* Sección de la Tarjeta */}
         <View style={styles.cardSection}>
-          {/* Reemplaza la URI por tu imagen local, ej: require('../../../assets/tarjeta-ciudad.png') */}
           <Image
             source={{
               uri: "https://via.placeholder.com/600x380/0A467A/FFFFFF?text=Tarjeta+Ciudad",
@@ -107,7 +107,17 @@ export default function MetroDinersScreen() {
             <Text style={styles.cardBalance}>Saldo Actual: $4.50</Text>
           </View>
 
-          <Text style={styles.giftBalance}>Saldo regalo Diners: + $2.00</Text>
+          {/* Sugerencia contextual — Escenario B */}
+          {!autoRecharge && (
+            <View style={styles.warningBanner}>
+              <Ionicons name="warning-outline" size={16} color="#92400E" />
+              <Text style={styles.warningText}>
+                Tu próxima recarga en efectivo{" "}
+                <Text style={{ fontWeight: "800" }}>no suma EcoPoints</Text>.
+                Activa la recarga automática.
+              </Text>
+            </View>
+          )}
 
           <View style={styles.autoRechargeRow}>
             <Text style={styles.autoRechargeText}>Recarga Automática:</Text>
@@ -124,35 +134,50 @@ export default function MetroDinersScreen() {
         {/* Sección de Nivel y Progreso */}
         <View style={styles.levelSection}>
           <Text style={styles.levelText}>
-            <Text style={{ fontWeight: "800" }}>Nivel:</Text> Pasajero
+            <Text style={{ fontWeight: "800" }}>Nivel:</Text> {level.name}
           </Text>
-          <Text style={styles.rechargesText}>Recargas este mes: 8/10</Text>
+          <Text style={styles.rechargesText}>
+            Recargas este mes: {rechargeCount}{level.next ? `/${level.name === "Pasajero" ? 10 : 15}` : " (máximo)"}
+          </Text>
 
           <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBarFill, { width: "80%" }]} />
+            <View
+              style={[styles.progressBarFill, { width: `${level.progress * 100}%` }]}
+            />
           </View>
 
-          <Text style={styles.unlockText}>
-            Desbloquear siguiente nivel: Explorador
-          </Text>
+          {level.next && (
+            <Text style={styles.unlockText}>
+              Desbloquear siguiente nivel: {level.next}
+            </Text>
+          )}
         </View>
 
-        {/* Historial de Recargas */}
+        {/* Historial de Recargas — datos reales del store */}
         <View style={styles.historySection}>
           <Text style={styles.sectionTitle}>Historial de Recargas</Text>
 
           <View style={styles.historyList}>
-            {historyData.map((item, index) => (
-              <View key={index} style={styles.historyCard}>
-                <View style={styles.historyTimeCol}>
-                  <Text style={styles.historyTime}>{item.time}</Text>
-                  <Text style={styles.historyDate}>{item.date}</Text>
-                </View>
-                <Text style={styles.historyAction}>{item.action}</Text>
-                <Ionicons name="train" size={20} color="#111" />
-                <Text style={styles.historyPoints}>{item.points}</Text>
+            {metroTransactions.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>
+                  No hay recargas con Diners este mes.{"\n"}
+                  Activa la recarga automática para ganar EcoPoints 🚇
+                </Text>
               </View>
-            ))}
+            ) : (
+              metroTransactions.map((tx, index) => (
+                <View key={tx.transactionId ?? index} style={styles.historyCard}>
+                  <View style={styles.historyTimeCol}>
+                    <Text style={styles.historyTime}>{formatTime(tx.date)}</Text>
+                    <Text style={styles.historyDate}>{formatDate(tx.date)}</Text>
+                  </View>
+                  <Text style={styles.historyAction}>{tx.label}</Text>
+                  <Ionicons name="train" size={20} color="#111" />
+                  <Text style={styles.historyPoints}>+{tx.ecoPoints} pts</Text>
+                </View>
+              ))
+            )}
           </View>
         </View>
 
@@ -179,12 +204,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: "800", color: "#000", marginLeft: 4 },
   pointsEarned: { flexDirection: "row", alignItems: "center", gap: 6 },
   pointsValue: { fontSize: 14, fontWeight: "800", color: "#000" },
-  pointsLabel: {
-    fontSize: 12,
-    color: "#333",
-    textAlign: "right",
-    marginTop: -4,
-  },
+  pointsLabel: { fontSize: 12, color: "#333", textAlign: "right", marginTop: -4 },
 
   cardSection: { marginHorizontal: 20 },
   cardImage: {
@@ -199,22 +219,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   cardTitle: { fontSize: 16, fontWeight: "800", color: "#000" },
   cardBalance: { fontSize: 14, color: "#333" },
-  giftBalance: { fontSize: 14, color: "#333", marginBottom: 6 },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  warningText: { fontSize: 13, color: "#92400E", flex: 1, lineHeight: 18 },
   autoRechargeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   autoRechargeText: { fontSize: 14, color: "#333", fontWeight: "500" },
 
   levelSection: { marginHorizontal: 20, marginTop: 25 },
   levelText: { fontSize: 14, color: "#000", marginBottom: 4 },
-  rechargesText: {
-    fontSize: 14,
-    color: "#000",
-    textAlign: "right",
-    marginBottom: 8,
-  },
+  rechargesText: { fontSize: 14, color: "#000", textAlign: "right", marginBottom: 8 },
   progressBarBackground: {
     width: "100%",
     height: 18,
@@ -223,21 +249,21 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 8,
   },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: "#277855",
-    borderRadius: 10,
-  },
+  progressBarFill: { height: "100%", backgroundColor: "#277855", borderRadius: 10 },
   unlockText: { fontSize: 10, color: "#555" },
 
   historySection: { marginHorizontal: 20, marginTop: 30 },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "400",
-    color: "#000",
-    marginBottom: 15,
-  },
+  sectionTitle: { fontSize: 20, fontWeight: "400", color: "#000", marginBottom: 15 },
   historyList: { gap: 12 },
+  emptyCard: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+  },
+  emptyText: { fontSize: 13, color: "#666", textAlign: "center", lineHeight: 20 },
   historyCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -252,16 +278,11 @@ const styles = StyleSheet.create({
   historyTimeCol: { width: 70 },
   historyTime: { fontSize: 12, fontWeight: "800", color: "#000" },
   historyDate: { fontSize: 10, color: "#555" },
-  historyAction: {
-    flex: 1,
-    fontSize: 14,
-    color: "#333",
-    paddingHorizontal: 10,
-  },
+  historyAction: { flex: 1, fontSize: 14, color: "#333", paddingHorizontal: 10 },
   historyPoints: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#000",
+    color: "#277855",
     minWidth: 70,
     textAlign: "right",
   },

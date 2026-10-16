@@ -10,38 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import EcoHeader from "../../../components/EcoHeader";
-
-// --- Datos de Ejemplo ---
-const materialsData = [
-  { id: "1", icon: "bottle-soda-outline", current: 6, max: 10, label: "6/10" },
-  {
-    id: "2",
-    icon: "file-document-outline",
-    current: 10,
-    max: 10,
-    label: "10/10",
-  },
-  { id: "3", icon: "recycle", current: 2, max: 10, label: "2/10" },
-];
-
-const deliveriesData = [
-  {
-    id: "1",
-    time: "10:23",
-    date: "25/06/2026",
-    material: "Papel",
-    weight: "1 kg",
-    points: "+ 150 pts",
-  },
-  {
-    id: "2",
-    time: "10:23",
-    date: "25/06/2026",
-    material: "Papel",
-    weight: "1 kg",
-    points: "+ 150 pts",
-  },
-];
+import { useEcoStore } from "../../../store/useEcoStore";
 
 // --- Componente del Medidor de Medio Arco ---
 const HalfGauge = ({ current, max }: { current: number; max: number }) => {
@@ -58,7 +27,7 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
   return (
     <View style={styles.gaugeContainer}>
       <Svg width={size} height={size / 2 + strokeWidth / 2}>
-        {/* Pista de fondo (blanca con borde gris simulado mediante color claro) */}
+        {/* Pista de fondo */}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -70,7 +39,7 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
           origin={`${size / 2}, ${size / 2}`}
           fill="transparent"
         />
-        {/* Un borde muy sutil para la parte vacía */}
+        {/* Borde sutil */}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -82,7 +51,7 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
           origin={`${size / 2}, ${size / 2}`}
           fill="transparent"
         />
-        {/* Pista de progreso (Verde) */}
+        {/* Progreso (Verde) */}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -109,37 +78,25 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
         name="leaf-outline"
         size={20}
         color="#277855"
-        style={[
-          styles.floatingLeaf,
-          { top: 10, left: 20, transform: [{ rotate: "-30deg" }] },
-        ]}
+        style={[styles.floatingLeaf, { top: 10, left: 20, transform: [{ rotate: "-30deg" }] }]}
       />
       <Ionicons
         name="leaf-outline"
         size={16}
         color="#277855"
-        style={[
-          styles.floatingLeaf,
-          { top: 40, right: 30, transform: [{ rotate: "45deg" }] },
-        ]}
+        style={[styles.floatingLeaf, { top: 40, right: 30, transform: [{ rotate: "45deg" }] }]}
       />
       <Ionicons
         name="leaf-outline"
         size={24}
         color="#277855"
-        style={[
-          styles.floatingLeaf,
-          { bottom: -20, left: 10, transform: [{ rotate: "-70deg" }] },
-        ]}
+        style={[styles.floatingLeaf, { bottom: -20, left: 10, transform: [{ rotate: "-70deg" }] }]}
       />
       <Ionicons
         name="leaf-outline"
         size={20}
         color="#277855"
-        style={[
-          styles.floatingLeaf,
-          { bottom: -10, right: 10, transform: [{ rotate: "30deg" }] },
-        ]}
+        style={[styles.floatingLeaf, { bottom: -10, right: 10, transform: [{ rotate: "30deg" }] }]}
       />
     </View>
   );
@@ -147,6 +104,39 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
 
 export default function ReciVeciScreen() {
   const router = useRouter();
+
+  // — Store —
+  const addReciVeciDelivery = useEcoStore((s) => s.addReciVeciDelivery);
+  const reciVeciKgTotal     = useEcoStore((s) => s.reciVeciKgTotal);
+  const deliveries          = useEcoStore((s) => s.reciVeciDeliveries);
+
+  // Meta semanal: 20 kg
+  const metaKg = 20;
+  const ecoPointsEarned = Math.floor(reciVeciKgTotal * 20); // 20 pts/kg
+
+  const materialsData = [
+    { id: "1", icon: "bottle-soda-outline", current: Math.min(reciVeciKgTotal * 0.3, 10), max: 10 },
+    { id: "2", icon: "file-document-outline", current: Math.min(reciVeciKgTotal * 0.5, 10), max: 10 },
+    { id: "3", icon: "recycle", current: Math.min(reciVeciKgTotal * 0.2, 10), max: 10 },
+  ];
+
+  const handleSchedulePickup = () => {
+    // Simula una recolección de 2 kg de Papel y Plástico
+    addReciVeciDelivery(2, ["Papel", "Plástico"]);
+  };
+
+  const formatDate = (date: Date) =>
+    new Date(date).toLocaleDateString("es-EC", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+  const formatTime = (date: Date) =>
+    new Date(date).toLocaleTimeString("es-EC", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
     <SafeAreaView style={styles.container}>
@@ -182,10 +172,8 @@ export default function ReciVeciScreen() {
             />
             <View>
               <Text style={styles.pointsValue}>
-                2100{" "}
-                <Text style={{ fontWeight: "400", fontSize: 12 }}>
-                  EcoPoints
-                </Text>
+                {ecoPointsEarned}{" "}
+                <Text style={{ fontWeight: "400", fontSize: 12 }}>EcoPoints</Text>
               </Text>
               <Text style={styles.pointsLabel}>ganados</Text>
             </View>
@@ -194,15 +182,19 @@ export default function ReciVeciScreen() {
 
         {/* Sección del Gráfico Central */}
         <View style={styles.progressSection}>
-          <HalfGauge current={17} max={20} />
+          <HalfGauge current={Math.min(reciVeciKgTotal, metaKg)} max={metaKg} />
 
           <Text style={styles.progressTitle}>Tu progreso de reciclaje</Text>
           <Text style={styles.progressSubtitle}>Meta semanal</Text>
 
-          <Text style={styles.pointsWonText}>500 EcoPoints ganados</Text>
+          <Text style={styles.pointsWonText}>{ecoPointsEarned} EcoPoints ganados</Text>
 
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.8}>
-            <Text style={styles.actionButtonText}>Programar Recolección</Text>
+          <TouchableOpacity
+            style={styles.actionButton}
+            activeOpacity={0.8}
+            onPress={handleSchedulePickup}
+          >
+            <Text style={styles.actionButtonText}>Programar Recolección (+40 pts)</Text>
           </TouchableOpacity>
         </View>
 
@@ -226,50 +218,45 @@ export default function ReciVeciScreen() {
                       ]}
                     />
                   </View>
-                  <Text style={styles.materialLabel}>{item.label}</Text>
+                  <Text style={styles.materialLabel}>
+                    {item.current.toFixed(1)}/{item.max}
+                  </Text>
                 </View>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Entregas Confirmadas */}
+        {/* Entregas Confirmadas — datos reales del store */}
         <View style={styles.deliveriesSection}>
           <Text style={styles.sectionTitle}>Entregas Confirmadas</Text>
           <View style={styles.deliveriesCard}>
-            {deliveriesData.map((item, index) => (
-              <View
-                key={item.id}
-                style={[
-                  styles.deliveryRow,
-                  index === deliveriesData.length - 1 && {
-                    borderBottomWidth: 0,
-                  },
-                ]}
-              >
-                <View style={styles.deliveryTimeCol}>
-                  <Text style={styles.deliveryTime}>{item.time}</Text>
-                  <Text style={styles.deliveryDate}>{item.date}</Text>
-                </View>
-                <Text style={styles.deliveryMaterial}>
-                  {item.material} {item.weight}
+            {deliveries.length === 0 ? (
+              <View style={styles.emptyDelivery}>
+                <Text style={styles.emptyText}>
+                  Programa tu primera recolección para ganar EcoPoints 🌱
                 </Text>
-                <Text style={styles.deliveryPoints}>{item.points}</Text>
               </View>
-            ))}
-            {/* Fila extra vacía para simular el corte que se ve en la imagen al fondo */}
-            <View
-              style={[
-                styles.deliveryRow,
-                { borderBottomWidth: 0, opacity: 0.3 },
-              ]}
-            >
-              <View style={styles.deliveryTimeCol}>
-                <Text style={styles.deliveryTime}>10:23</Text>
-              </View>
-              <Text style={styles.deliveryMaterial}>Papel 1 kg</Text>
-              <Text style={styles.deliveryPoints}>+ 150 pts</Text>
-            </View>
+            ) : (
+              [...deliveries].reverse().map((item, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.deliveryRow,
+                    index === deliveries.length - 1 && { borderBottomWidth: 0 },
+                  ]}
+                >
+                  <View style={styles.deliveryTimeCol}>
+                    <Text style={styles.deliveryTime}>{formatTime(item.date)}</Text>
+                    <Text style={styles.deliveryDate}>{formatDate(item.date)}</Text>
+                  </View>
+                  <Text style={styles.deliveryMaterial}>
+                    {item.materials.join(", ")} {item.kg} kg
+                  </Text>
+                  <Text style={styles.deliveryPoints}>+{item.pointsEarned} pts</Text>
+                </View>
+              ))
+            )}
           </View>
         </View>
 
@@ -295,50 +282,22 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, color: "#000", marginLeft: 4 },
   pointsEarned: { flexDirection: "row", alignItems: "center", gap: 6 },
   pointsValue: { fontSize: 14, fontWeight: "800", color: "#000" },
-  pointsLabel: {
-    fontSize: 12,
-    color: "#333",
-    textAlign: "right",
-    marginTop: -4,
-  },
+  pointsLabel: { fontSize: 12, color: "#333", textAlign: "right", marginTop: -4 },
 
-  progressSection: {
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginTop: 10,
-  },
+  progressSection: { alignItems: "center", marginHorizontal: 20, marginTop: 10 },
   gaugeContainer: {
     position: "relative",
     alignItems: "center",
     justifyContent: "flex-end",
     height: 110,
   },
-  gaugeTextContainer: {
-    position: "absolute",
-    bottom: -5,
-    alignItems: "center",
-  },
+  gaugeTextContainer: { position: "absolute", bottom: -5, alignItems: "center" },
   gaugeValueText: { fontSize: 22, fontWeight: "800", color: "#000" },
   floatingLeaf: { position: "absolute" },
 
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#000",
-    marginTop: 25,
-  },
-  progressSubtitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 15,
-  },
-  pointsWonText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#000",
-    marginBottom: 15,
-  },
+  progressTitle: { fontSize: 18, fontWeight: "800", color: "#000", marginTop: 25 },
+  progressSubtitle: { fontSize: 12, fontWeight: "800", color: "#000", marginBottom: 15 },
+  pointsWonText: { fontSize: 16, fontWeight: "800", color: "#000", marginBottom: 15 },
 
   actionButton: {
     backgroundColor: "#0A1C40",
@@ -351,24 +310,10 @@ const styles = StyleSheet.create({
   actionButtonText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
 
   materialsSection: { marginHorizontal: 20, marginTop: 30 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "400",
-    color: "#000",
-    marginBottom: 15,
-  },
-  materialsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  sectionTitle: { fontSize: 18, fontWeight: "400", color: "#000", marginBottom: 15 },
+  materialsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   materialItem: { alignItems: "center", flex: 1 },
-  materialProgressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 10,
-    gap: 6,
-  },
+  materialProgressContainer: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 6 },
   materialProgressBar: {
     width: 40,
     height: 10,
@@ -376,11 +321,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     overflow: "hidden",
   },
-  materialProgressFill: {
-    height: "100%",
-    backgroundColor: "#2E8B57",
-    borderRadius: 5,
-  },
+  materialProgressFill: { height: "100%", backgroundColor: "#2E8B57", borderRadius: 5 },
   materialLabel: { fontSize: 10, fontWeight: "800", color: "#000" },
 
   deliveriesSection: { marginHorizontal: 20, marginTop: 30 },
@@ -391,6 +332,8 @@ const styles = StyleSheet.create({
     borderColor: "#A2C7B4",
     overflow: "hidden",
   },
+  emptyDelivery: { padding: 20, alignItems: "center" },
+  emptyText: { fontSize: 13, color: "#666", textAlign: "center" },
   deliveryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -403,17 +346,6 @@ const styles = StyleSheet.create({
   deliveryTimeCol: { flex: 1 },
   deliveryTime: { fontSize: 12, fontWeight: "800", color: "#000" },
   deliveryDate: { fontSize: 10, color: "#555" },
-  deliveryMaterial: {
-    flex: 1.5,
-    fontSize: 12,
-    color: "#333",
-    textAlign: "center",
-  },
-  deliveryPoints: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#000",
-    textAlign: "right",
-  },
+  deliveryMaterial: { flex: 1.5, fontSize: 12, color: "#333", textAlign: "center" },
+  deliveryPoints: { flex: 1, fontSize: 12, fontWeight: "800", color: "#277855", textAlign: "right" },
 });

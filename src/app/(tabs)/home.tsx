@@ -9,8 +9,30 @@ import {
   View,
 } from "react-native";
 import { COLORS } from "../../constants/theme";
+import {
+  selectAmountToMultiplier,
+  selectMultiplierActive,
+  selectValidPoints,
+  useEcoStore,
+} from "../../store/useEcoStore";
 
 export default function HomeScreen() {
+  const validPoints       = useEcoStore(selectValidPoints);
+  const multiplierActive  = useEcoStore(selectMultiplierActive);
+  const amountLeft        = useEcoStore(selectAmountToMultiplier);
+  const financials        = useEcoStore((s) => s.financials);
+  const reciVeciKgTotal   = useEcoStore((s) => s.reciVeciKgTotal);
+  const stravaKm          = useEcoStore((s) => s.strava.totalKm);
+  const scoredTransactions = useEcoStore((s) => s.scoredTransactions);
+
+  const metroPoints = scoredTransactions
+    .filter((tx) => tx.category === "metro")
+    .reduce((acc, tx) => acc + tx.ecoPoints, 0);
+
+  const reciVeciPoints = Math.floor(reciVeciKgTotal * 20);
+  const stravaPoints   = Math.floor(stravaKm * 5);
+  const metaReciKg     = 50;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -48,7 +70,6 @@ export default function HomeScreen() {
 
         <View style={styles.productCard}>
           <View style={styles.productCardTop}>
-            {/* Simulación de la miniatura de la tarjeta */}
             <View style={styles.miniCardImage}>
               <Text style={styles.miniCardLogo}>Diners</Text>
             </View>
@@ -63,7 +84,9 @@ export default function HomeScreen() {
               Saldo a pagar hasta 01/jul/2026
             </Text>
             <View style={styles.balanceContainer}>
-              <Text style={styles.balanceAmount}>$190.89</Text>
+              <Text style={styles.balanceAmount}>
+                ${financials?.totalSpent.toFixed(2) ?? "0.00"}
+              </Text>
               <TouchableOpacity>
                 <Ionicons
                   name="eye-outline"
@@ -117,36 +140,76 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Sección: Tus logros de la semana (ReciVeci por defecto) */}
+        {/* Sección: Tus logros de la semana */}
         <Text style={styles.sectionTitleOnly}>Tus logros de la semana</Text>
-        <View style={styles.achievementCard}>
-          <View style={styles.achievementHeader}>
-            <View style={styles.achievementTitleContainer}>
-              <MaterialCommunityIcons
-                name="recycle"
-                size={20}
-                color={COLORS.textPrimary}
+
+        {/* — Tarjeta EcoClub con datos reales — */}
+        <View style={styles.ecoCard}>
+          {/* Fila 1: EcoPoints totales + multiplicador */}
+          <View style={styles.ecoCardHeader}>
+            <View style={styles.ecoCardTitleRow}>
+              <MaterialCommunityIcons name="leaf" size={18} color="#277855" />
+              <Text style={styles.ecoCardTitle}>EcoClub</Text>
+            </View>
+            {multiplierActive ? (
+              <View style={styles.multiplierBadge}>
+                <Ionicons name="flash" size={12} color="#FFF" />
+                <Text style={styles.multiplierBadgeText}>×2 activo</Text>
+              </View>
+            ) : (
+              <Text style={styles.multiplierInactive}>
+                ${amountLeft.toFixed(0)} para ×2
+              </Text>
+            )}
+          </View>
+
+          <Text style={styles.ecoPointsTotal}>{validPoints} EcoPoints</Text>
+
+          {/* Progreso ReciVeci */}
+          <View style={styles.challengeRow}>
+            <MaterialCommunityIcons name="recycle" size={16} color="#555" />
+            <Text style={styles.challengeLabel}>ReciVeci</Text>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${Math.min((reciVeciKgTotal / metaReciKg) * 100, 100)}%` },
+                ]}
               />
-              <Text style={styles.achievementTitle}>ReciVeci</Text>
             </View>
-            <Text style={styles.achievementPercentage}>46%</Text>
+            <Text style={styles.challengeStat}>
+              {reciVeciKgTotal}/{metaReciKg} kg
+            </Text>
           </View>
 
-          <View style={styles.progressContainer}>
-            <Text style={styles.progressText}>23/50 kg</Text>
-            <View style={styles.progressBarBackground}>
-              <View style={[styles.progressBarFill, { width: "46%" }]} />
+          {/* Progreso Strava */}
+          <View style={styles.challengeRow}>
+            <Ionicons name="fitness-outline" size={16} color="#555" />
+            <Text style={styles.challengeLabel}>Strava</Text>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${Math.min((stravaKm / 35) * 100, 100)}%` },
+                ]}
+              />
             </View>
+            <Text style={styles.challengeStat}>{stravaKm}/35 km</Text>
           </View>
 
-          <Text style={styles.ecoPointsText}>130 EcoPoints</Text>
-
-          {/* Paginación */}
-          <View style={styles.pagination}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
+          {/* Progreso Metro */}
+          <View style={[styles.challengeRow, { marginBottom: 0 }]}>
+            <Ionicons name="train-outline" size={16} color="#555" />
+            <Text style={styles.challengeLabel}>Metro</Text>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${Math.min((metroPoints / 200) * 100, 100)}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.challengeStat}>{metroPoints}/200 pts</Text>
           </View>
         </View>
 
@@ -162,7 +225,6 @@ export default function HomeScreen() {
 
         <Text style={styles.shortcutSectionSubtitle}>Cupo de tus tarjetas</Text>
 
-        {/* Espaciador para que el TabBar flotante no tape el contenido */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
@@ -177,7 +239,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 120, // Espacio vital para el TabBar flotante
+    paddingBottom: 120,
   },
   header: {
     flexDirection: "row",
@@ -191,13 +253,8 @@ const styles = StyleSheet.create({
     color: COLORS.dinersBlue,
     letterSpacing: -1,
   },
-  headerIcons: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  iconButton: {
-    padding: 4,
-  },
+  headerIcons: { flexDirection: "row", gap: 16 },
+  iconButton: { padding: 4 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -215,10 +272,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: 16,
   },
-  linkText: {
-    fontSize: 14,
-    color: "#007AFF", // Azul tipo enlace
-  },
+  linkText: { fontSize: 14, color: "#007AFF" },
   productCard: {
     backgroundColor: COLORS.background,
     borderRadius: 16,
@@ -226,7 +280,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     borderWidth: 1,
     borderColor: COLORS.border,
-    // Sombra sutil
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -247,53 +300,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  miniCardLogo: {
-    color: "#FFF",
-    fontSize: 8,
-    fontWeight: "bold",
-  },
-  productName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.textPrimary,
-  },
-  productNumber: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
+  miniCardLogo: { color: "#FFF", fontSize: 8, fontWeight: "bold" },
+  productName: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary },
+  productNumber: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
   productCardBottom: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
-  productDate: {
-    fontSize: 10,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  balanceContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  productDate: { fontSize: 10, color: COLORS.textSecondary, marginBottom: 4 },
+  balanceContainer: { flexDirection: "row", alignItems: "center" },
   balanceAmount: {
     fontSize: 28,
     fontWeight: "bold",
     color: COLORS.dinersBlue,
     marginRight: 8,
   },
-  eyeIcon: {
-    paddingBottom: 4,
-  },
+  eyeIcon: { paddingBottom: 4 },
   shortcutsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 30,
   },
-  shortcutItem: {
-    alignItems: "center",
-    width: "22%",
-  },
+  shortcutItem: { alignItems: "center", width: "22%" },
   shortcutIconCircle: {
     width: 50,
     height: 50,
@@ -305,64 +334,65 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  deunaText: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#8A2BE2",
-    fontStyle: "italic",
-  },
+  deunaText: { fontSize: 22, fontWeight: "bold", color: "#8A2BE2", fontStyle: "italic" },
   shortcutLabel: {
     fontSize: 12,
     color: COLORS.textPrimary,
     textAlign: "center",
     lineHeight: 16,
   },
-  achievementCard: {
+
+  // — Tarjeta EcoClub integrada —
+  ecoCard: {
     backgroundColor: COLORS.background,
     borderRadius: 20,
     padding: 20,
     marginBottom: 30,
     borderWidth: 1.5,
-    borderColor: "#E8F5E9", // Borde verde muy claro
+    borderColor: "#A2C7B4",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  achievementHeader: {
+  ecoCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  achievementTitleContainer: {
+  ecoCardTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  ecoCardTitle: { fontSize: 16, fontWeight: "bold", color: COLORS.textPrimary },
+  multiplierBadge: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 3,
+    backgroundColor: "#277855",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
-  achievementTitle: {
-    fontSize: 16,
+  multiplierBadgeText: { fontSize: 11, fontWeight: "800", color: "#FFF" },
+  multiplierInactive: { fontSize: 12, color: COLORS.textSecondary },
+  ecoPointsTotal: {
+    fontSize: 28,
     fontWeight: "bold",
-    color: COLORS.textPrimary,
-    marginLeft: 8,
-  },
-  achievementPercentage: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: COLORS.textPrimary,
-  },
-  progressContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    color: COLORS.dinersBlue,
     marginBottom: 16,
   },
-  progressText: {
+  challengeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  challengeLabel: {
     fontSize: 12,
     color: COLORS.textSecondary,
-    marginRight: 12,
-    width: 60,
+    width: 46,
   },
-  progressBarBackground: {
+  progressBarBg: {
     flex: 1,
     height: 8,
     backgroundColor: "#EAEAEA",
@@ -371,30 +401,14 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#4A9F76", // Verde progreso
+    backgroundColor: "#277855",
     borderRadius: 4,
   },
-  ecoPointsText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: COLORS.dinersBlue,
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#D1D1D1",
-  },
-  dotActive: {
-    backgroundColor: "#4A9F76",
-    width: 16, // Punto activo más ancho
+  challengeStat: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    width: 60,
+    textAlign: "right",
   },
   shortcutSectionSubtitle: {
     fontSize: 14,
@@ -402,7 +416,5 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: 10,
   },
-  bottomSpacer: {
-    height: 40,
-  },
+  bottomSpacer: { height: 40 },
 });

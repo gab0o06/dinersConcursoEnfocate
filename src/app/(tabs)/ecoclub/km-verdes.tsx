@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
+import { useEcoStore } from "../../../store/useEcoStore";
 
 // OBLIGATORIO: Cierra el navegador al recibir la respuesta de Strava
 WebBrowser.maybeCompleteAuthSession();
@@ -38,18 +39,28 @@ interface StravaActivity {
 
 export default function KmVerdesScreen() {
   const router = useRouter();
-  const [totalKm, setTotalKm] = useState(0);
-  const [activities, setActivities] = useState<StravaActivity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  // Configuración de la sesión OAuth2
+  // — Store —
+  const addStravaPoints   = useEcoStore((s) => s.addStravaPoints);
+  const updateStravaState = useEcoStore((s) => s.updateStravaState);
+  const disconnectStrava  = useEcoStore((s) => s.disconnectStrava);
+  const stravaStore       = useEcoStore((s) => s.strava);
+
+  // — Estado local de UI —
+  const [isLoading, setIsLoading]   = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(
+    stravaStore.accessToken,
+  );
+  const [activities, setActivities] = useState<StravaActivity[]>(
+    stravaStore.activities,
+  );
+  const [totalKm, setTotalKm]       = useState(stravaStore.totalKm);
+
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: "ecoclub",
     path: "ecoclub/km-verdes",
   });
 
-  console.log("Tu Redirect URI es:", redirectUri);
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: STRAVA_CLIENT_ID as string,
@@ -59,34 +70,36 @@ export default function KmVerdesScreen() {
     stravaEndpoints,
   );
 
-  // 1. Verificar si el usuario ya inició sesión previamente
+  // 1. Verificar token almacenado (SecureStore sigue siendo la fuente del token)
   useEffect(() => {
     const checkStoredToken = async () => {
       try {
-        const storedToken = await SecureStore.getItemAsync(
-          "strava_access_token",
-        );
+        const storedToken = await SecureStore.getItemAsync("strava_access_token");
         if (storedToken) {
           setAccessToken(storedToken);
           fetchStravaActivities(storedToken);
         } else {
           setIsLoading(false);
         }
-      } catch (e) {
+      } catch {
         setIsLoading(false);
       }
     };
-    checkStoredToken();
+    // Si el store ya tiene token, no hace falta volver a llamar SecureStore
+    if (stravaStore.accessToken) {
+      setIsLoading(false);
+    } else {
+      checkStoredToken();
+    }
   }, []);
 
-  // 2. Escuchar la respuesta de inicio de sesión de Strava
+  // 2. Escuchar la respuesta de Strava
   useEffect(() => {
     if (response?.type === "success" && response.params.code) {
       exchangeCodeForToken(response.params.code);
     }
   }, [response]);
 
-  // Intercambiar el código recibido por los tokens del usuario
   const exchangeCodeForToken = async (code: string) => {
     setIsLoading(true);
     try {
@@ -103,15 +116,9 @@ export default function KmVerdesScreen() {
       const data = await res.json();
 
       if (data.access_token) {
-        await SecureStore.setItemAsync(
-          "strava_access_token",
-          data.access_token,
-        );
+        await SecureStore.setItemAsync("strava_access_token", data.access_token);
         if (data.refresh_token) {
-          await SecureStore.setItemAsync(
-            "strava_refresh_token",
-            data.refresh_token,
-          );
+          await SecureStore.setItemAsync("strava_refresh_token", data.refresh_token);
         }
         setAccessToken(data.access_token);
         fetchStravaActivities(data.access_token);
@@ -122,30 +129,28 @@ export default function KmVerdesScreen() {
     }
   };
 
-  // Consultar las actividades usando el token del usuario activo
   const fetchStravaActivities = async (token: string) => {
     setIsLoading(true);
     try {
       const res = await fetch(
         "https://www.strava.com/api/v3/athlete/activities?per_page=30",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       const data = await res.json();
 
       if (Array.isArray(data)) {
         const filtered = data.filter(
-          (act) =>
-            act.type === "Run" || act.type === "Walk" || act.type === "Ride",
+          (act) => act.type === "Run" || act.type === "Walk" || act.type === "Ride",
         );
-        const totalMeters = filtered.reduce(
-          (acc, curr) => acc + curr.distance,
-          0,
-        );
+        const totalMeters = filtered.reduce((acc, curr) => acc + curr.distance, 0);
+        const km = Number((totalMeters / 1000).toFixed(1));
 
-        setTotalKm(Number((totalMeters / 1000).toFixed(1)));
+        setTotalKm(km);
         setActivities(filtered);
+
+        // — Actualizar el store global —
+        addStravaPoints(km);
+        updateStravaState({ accessToken: token, activities: filtered, totalKm: km });
       }
     } catch (error) {
       console.error("Error obteniendo actividades:", error);
@@ -154,13 +159,14 @@ export default function KmVerdesScreen() {
     }
   };
 
-  // Cerrar sesión de Strava
   const handleLogout = async () => {
     await SecureStore.deleteItemAsync("strava_access_token");
     await SecureStore.deleteItemAsync("strava_refresh_token");
     setAccessToken(null);
     setActivities([]);
     setTotalKm(0);
+    // — Limpiar el store global —
+    disconnectStrava();
   };
 
   const formatDate = (dateString: string) => {
@@ -179,6 +185,7 @@ export default function KmVerdesScreen() {
 
   const metaKm = 35;
   const progressPercentage = Math.min((totalKm / metaKm) * 100, 100);
+  const ecoPointsEarned = Math.floor(totalKm * 5); // 5 pts/km
 
   return (
     <SafeAreaView style={styles.container}>
@@ -211,7 +218,6 @@ export default function KmVerdesScreen() {
           )}
         </View>
 
-        {/* Estado desconectado: Mostrar botón de Login */}
         {!accessToken ? (
           <View style={styles.loginContainer}>
             <Ionicons
@@ -234,7 +240,6 @@ export default function KmVerdesScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          /* Estado conectado: Mostrar estadísticas e historial */
           <>
             <View style={styles.statsContainer}>
               {isLoading ? (
@@ -257,6 +262,14 @@ export default function KmVerdesScreen() {
                         { width: `${progressPercentage}%` },
                       ]}
                     />
+                  </View>
+
+                  {/* EcoPoints ganados por Strava */}
+                  <View style={styles.pointsBadge}>
+                    <Ionicons name="leaf" size={14} color="#1E754C" />
+                    <Text style={styles.pointsBadgeText}>
+                      {ecoPointsEarned} EcoPoints ganados (5 pts/km)
+                    </Text>
                   </View>
                 </>
               )}
@@ -297,6 +310,9 @@ export default function KmVerdesScreen() {
                     <View style={styles.distanceBadge}>
                       <Text style={styles.distanceText}>
                         {(item.distance / 1000).toFixed(2)} km
+                      </Text>
+                      <Text style={styles.distancePoints}>
+                        +{Math.floor((item.distance / 1000) * 5)} pts
                       </Text>
                     </View>
                   </View>
@@ -358,11 +374,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#A2C7B4",
     borderRadius: 10,
     overflow: "hidden",
+    marginBottom: 12,
   },
   progressBarFill: {
     height: "100%",
     backgroundColor: "#1E754C",
     borderRadius: 10,
+  },
+  pointsBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  pointsBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1E754C",
   },
   historySection: { marginTop: 30, paddingHorizontal: 20 },
   sectionTitle: {
@@ -407,6 +438,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+    alignItems: "center",
   },
   distanceText: { fontSize: 14, fontWeight: "800", color: "#1E754C" },
+  distancePoints: { fontSize: 10, color: "#1E754C", fontWeight: "600" },
 });
