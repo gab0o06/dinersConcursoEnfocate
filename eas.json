@@ -19,8 +19,8 @@
       },
       "env": {
         "PNPM_CONFIG_ONLY_BUILT_DEPENDENCIES": "unrs-resolver",
-        "EXPO_PUBLIC_STRAVA_CLIENT_ID": "",
-        "EXPO_PUBLIC_STRAVA_CLIENT_SECRET": ""
+        "EXPO_PUBLIC_STRAVA_CLIENT_ID": "276120",
+        "EXPO_PUBLIC_STRAVA_CLIENT_SECRET": "5ef9c839255dfe6879f61fb24fef5139c79b5fc8"
       }
     },
     "production": {
