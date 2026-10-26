@@ -50,7 +50,8 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "tunnel": "expo start --tunnel",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "node scripts/test-engine.mjs"
   },
   "private": true
 }

@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { COLORS } from "../../constants/theme";
+import { ECOCLUB } from "../../config/ecoclub.config";
 import {
   selectAmountToMultiplier,
   selectMultiplierActive,
@@ -29,9 +30,17 @@ export default function HomeScreen() {
     .filter((tx) => tx.category === "metro")
     .reduce((acc, tx) => acc + tx.ecoPoints, 0);
 
-  const reciVeciPoints = Math.floor(reciVeciKgTotal * 20);
-  const stravaPoints   = Math.floor(stravaKm * 5);
-  const metaReciKg     = 50;
+  const reciVeciPoints = Math.floor(reciVeciKgTotal * ECOCLUB.retos.reciVeciPtsPorKg);
+  const stravaPoints   = Math.floor(stravaKm * ECOCLUB.retos.stravaPtsPorKm);
+  const META_RECI_KG   = ECOCLUB.retos.reciVeciMetaKg;
+  const META_STRAVA_KM = ECOCLUB.retos.stravaMetaKm;
+  const META_METRO_PTS = ECOCLUB.retos.metroMetaPts;
+
+  // Fecha de corte calculada dinámicamente (primer día del mes siguiente)
+  const fechaCorte = new Date();
+  fechaCorte.setMonth(fechaCorte.getMonth() + 1);
+  fechaCorte.setDate(1);
+  const fechaCorteStr = fechaCorte.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' });
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -81,7 +90,7 @@ export default function HomeScreen() {
 
           <View style={styles.productCardBottom}>
             <Text style={styles.productDate}>
-              Saldo a pagar hasta 01/jul/2026
+              Saldo a pagar hasta {fechaCorteStr}
             </Text>
             <View style={styles.balanceContainer}>
               <Text style={styles.balanceAmount}>
@@ -164,6 +173,9 @@ export default function HomeScreen() {
           </View>
 
           <Text style={styles.ecoPointsTotal}>{validPoints} EcoPoints</Text>
+          <Text style={styles.ecoPointsDollarValue}>
+            = ${(validPoints * ECOCLUB.valorPuntoUSD).toFixed(2)} disponibles para tu factura
+          </Text>
 
           {/* Progreso ReciVeci */}
           <View style={styles.challengeRow}>
@@ -173,12 +185,12 @@ export default function HomeScreen() {
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${Math.min((reciVeciKgTotal / metaReciKg) * 100, 100)}%` },
+                  { width: `${Math.min((reciVeciKgTotal / META_RECI_KG) * 100, 100)}%` },
                 ]}
               />
             </View>
             <Text style={styles.challengeStat}>
-              {reciVeciKgTotal}/{metaReciKg} kg
+              {reciVeciKgTotal}/{META_RECI_KG} kg
             </Text>
           </View>
 
@@ -190,11 +202,11 @@ export default function HomeScreen() {
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${Math.min((stravaKm / 35) * 100, 100)}%` },
+                  { width: `${Math.min((stravaKm / META_STRAVA_KM) * 100, 100)}%` },
                 ]}
               />
             </View>
-            <Text style={styles.challengeStat}>{stravaKm}/35 km</Text>
+            <Text style={styles.challengeStat}>{stravaKm}/{META_STRAVA_KM} km</Text>
           </View>
 
           {/* Progreso Metro */}
@@ -205,7 +217,7 @@ export default function HomeScreen() {
               <View
                 style={[
                   styles.progressBarFill,
-                  { width: `${Math.min((metroPoints / 200) * 100, 100)}%` },
+                  { width: `${Math.min((metroPoints / META_METRO_PTS) * 100, 100)}%` },
                 ]}
               />
             </View>
@@ -379,6 +391,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: COLORS.dinersBlue,
+    marginBottom: 4,
+  },
+  ecoPointsDollarValue: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#277855",
     marginBottom: 16,
   },
   challengeRow: {

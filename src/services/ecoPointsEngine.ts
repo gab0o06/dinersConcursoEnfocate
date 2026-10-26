@@ -2,11 +2,17 @@
  * EcoPoints Engine — Motor financiero de EcoClub Diners
  *
  * Implementa los controles financieros del pitch (§04):
- *   1. Tope mensual = 40% de la comisión real generada por el usuario
+ *   1. Tope mensual variable por nivel (% de la comisión real generada)
  *   2. Caducidad de 90 días
  *   3. Umbral mínimo de canje: 200 pts
- *   4. Umbral Top-of-Wallet: $200/mes en transacciones
- *   5. Los tres niveles de canje (Básico / Verde / Guardián)
+ *   4. Umbral Top-of-Wallet: $200/mes en transacciones (×1.5 pts)
+ *   5. Los cinco tipos de canje (eco-cashback / cuota-cero / milla-diners / bono-predial / eco-aliado)
+ *   6. Bandas A/B/C por gasto mensual
+ *   7. Reto Metro: 50 pts/recarga, máximo 10 recargas/mes
+ *
+ * NOTE: Las constantes de ECOCLUB se definen localmente aquí.
+ * Cuando `/src/config/ecoclub.config.ts` esté disponible, importar desde allí
+ * y eliminar la sección "Constantes locales ECOCLUB" de este archivo.
  */
 
 import {
@@ -25,30 +31,34 @@ export {
   type ScoredTransaction,
 };
 
+import { ECOCLUB, type NivelEcoClub } from "../config/ecoclub.config";
+
+export type { NivelEcoClub };
+
 // ---------------------------------------------------------------------------
-// Constantes financieras del modelo
+// Constantes financieras del modelo (centralizadas en ECOCLUB)
 // ---------------------------------------------------------------------------
 
-/** Porcentaje máximo de la comisión que se puede canjear */
-export const REDEEM_CAP_RATE = 0.4;
+/** Porcentaje máximo de la comisión que se puede canjear (nivel por defecto) */
+export const REDEEM_CAP_RATE = ECOCLUB.topePctPorNivel["activado"];
 
 /** Mínimo de puntos para hacer cualquier canje */
-export const MIN_REDEEM_POINTS = 200;
+export const MIN_REDEEM_POINTS = ECOCLUB.minCanjePts;
 
 /** Gasto mínimo mensual para activar multiplicadores ($) */
-export const TOP_OF_WALLET_THRESHOLD = 200;
+export const TOP_OF_WALLET_THRESHOLD = ECOCLUB.topOfWalletThreshold;
 
 /** Días antes de que expiren los EcoPoints */
-export const POINTS_EXPIRY_DAYS = 90;
+export const POINTS_EXPIRY_DAYS = ECOCLUB.caducidadDias;
 
 /** Tasa de conversión: 100 pts = $0.50 de eco-cashback */
-export const POINTS_TO_DOLLARS_RATE = 0.005;
+export const POINTS_TO_DOLLARS_RATE = ECOCLUB.valorPuntoUSD;
 
 /** Puntos requeridos para canje nivel Verde (cuota de manejo) */
 export const VERDE_LEVEL_POINTS = 2000;
 
 /** Puntos requeridos para 1 milla Diners (nivel Guardián) */
-export const GUARDIAN_POINTS_PER_MILE = 300;
+export const GUARDIAN_POINTS_PER_MILE = ECOCLUB.millaPts;
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -79,14 +89,65 @@ export interface MonthlyFinancialSummary {
   amountToActivateMultiplier: number;
 }
 
+export type RedeemOptionId =
+  | "eco-cashback"
+  | "cuota-cero"
+  | "milla-diners"
+  | "bono-predial"
+  | "eco-aliado";
+
 export interface RedeemOption {
-  id: "basico" | "verde" | "guardian";
+  id: RedeemOptionId;
   label: string;
   pointsCost: number;
   benefit: string;
   dollarValue: number;
   available: boolean;
+  nivelMinimo: NivelEcoClub;
   reason?: string; // por qué no está disponible
+}
+
+// ---------------------------------------------------------------------------
+// Bandas A/B/C
+// ---------------------------------------------------------------------------
+
+export type BandaEcoClub = "A" | "B" | "C";
+
+/**
+ * Determina la banda del usuario según su gasto mensual total.
+ *   A: >= $600/mes
+ *   B: >= $300/mes
+ *   C:  < $300/mes
+ */
+export function getBanda(monthlySpend: number): BandaEcoClub {
+  if (monthlySpend >= 600) return "A";
+  if (monthlySpend >= 300) return "B";
+  return "C";
+}
+
+/**
+ * Aplica los límites de generación y saldo máximo por banda.
+ * Retorna los puntos a acreditar (0 si ya se alcanzó el saldo máximo).
+ *
+ * Límites por banda:
+ *   A: gen 2000 pts/mes, saldo máximo 5000 pts
+ *   B: gen 1200 pts/mes, saldo máximo 3000 pts
+ *   C: gen  600 pts/mes, saldo máximo 1500 pts
+ */
+export function applyBandaLimits(
+  newPoints: number,
+  currentBalance: number,
+  banda: BandaEcoClub,
+): number {
+  const limits: Record<BandaEcoClub, { gen: number; saldo: number }> = {
+    A: { gen: 2000, saldo: 5000 },
+    B: { gen: 1200, saldo: 3000 },
+    C: { gen: 600, saldo: 1500 },
+  };
+  const { gen, saldo } = limits[banda];
+  const canEarn = Math.max(0, Math.min(newPoints, gen));
+  const spaceLeft = Math.max(0, saldo - currentBalance);
+  return Math.min(canEarn, spaceLeft);
 }
 
 // ---------------------------------------------------------------------------
@@ -96,10 +157,13 @@ export interface RedeemOption {
 /**
  * Calcula el resumen financiero mensual del usuario.
  * Esta es la función central que implementa el modelo de costo variable.
+ *
+ * @param nivel - Nivel EcoClub del usuario; determina el % del tope de canje.
  */
 export function calculateMonthlyFinancials(
   transactions: ScoredTransaction[],
   accumulatedPoints: PointsBatch[],
+  nivel: NivelEcoClub = "activado",
 ): MonthlyFinancialSummary {
   // Totales del mes
   const totalSpent = transactions.reduce((acc, tx) => acc + tx.amount, 0);
@@ -108,8 +172,9 @@ export function calculateMonthlyFinancials(
     0,
   );
 
-  // REGLA CENTRAL: tope = 40% de la comisión real
-  const redeemCap = parseFloat((totalCommission * REDEEM_CAP_RATE).toFixed(2));
+  // REGLA CENTRAL: tope variable según nivel del usuario
+  const topePct = ECOCLUB.topePctPorNivel[nivel];
+  const redeemCap = parseFloat((totalCommission * topePct).toFixed(2));
   const redeemCapInPoints = Math.floor(redeemCap / POINTS_TO_DOLLARS_RATE);
 
   // Puntos brutos del mes (suma de todos los batches del mes actual)
@@ -158,14 +223,23 @@ export function createPointsBatch(
 }
 
 /**
- * Filtra los batches de puntos que aún no han expirado.
+ * Suma los puntos de los batches válidos (no expirados).
  * Implementa el control de caducidad de 90 días.
  */
 export function getValidPoints(batches: PointsBatch[]): number {
   const now = new Date();
   return batches
-    .filter((batch) => batch.expiresAt > now)
-    .reduce((acc, batch) => acc + batch.points, 0);
+    .filter((b) => b.expiresAt > now)
+    .reduce((acc, b) => acc + b.points, 0);
+}
+
+/**
+ * Retorna solo los batches que aún no han expirado.
+ * Útil para limpiar el store de batches caducados.
+ */
+export function filterValidBatches(batches: PointsBatch[]): PointsBatch[] {
+  const now = new Date();
+  return batches.filter((b) => b.expiresAt > now);
 }
 
 /**
@@ -189,12 +263,24 @@ export function pointsFromReciVeci(kg: number): PointsBatch {
 }
 
 /**
- * Genera las 3 opciones de canje según los puntos disponibles y el tope.
- * Implementa §03 del pitch: Básico / Verde / Guardián.
+ * Calcula bonus de Metro: 50 pts/recarga, máximo 10 recargas/mes.
+ */
+export function calculateMetroBonus(
+  metroTransactions: ScoredTransaction[],
+): number {
+  const capped = Math.min(metroTransactions.length, 10);
+  return capped * 50;
+}
+
+/**
+ * Genera las opciones de canje según los puntos disponibles y el tope.
+ * Implementa §03 del pitch: eco-cashback / cuota-cero / milla-diners /
+ * bono-predial / eco-aliado.
  */
 export function getRedeemOptions(
   availablePoints: number,
   redeemCap: number,
+  canjeadoEsteMes: number = 0,
 ): RedeemOption[] {
   const capInPoints = Math.floor(redeemCap / POINTS_TO_DOLLARS_RATE);
   const effectivePoints = Math.min(availablePoints, capInPoints);
@@ -203,51 +289,93 @@ export function getRedeemOptions(
     (MIN_REDEEM_POINTS * POINTS_TO_DOLLARS_RATE).toFixed(2),
   );
 
+  // Puntos restantes dentro del tope mensual de canje
+  const remainingCapPoints = Math.max(0, capInPoints - canjeadoEsteMes);
+  const spendablePoints = Math.min(effectivePoints, remainingCapPoints);
+
   return [
     {
-      id: "basico",
+      id: "eco-cashback",
       label: "Eco-Cashback",
       pointsCost: MIN_REDEEM_POINTS,
       benefit: `$${basicValue} de descuento sobre tu factura Diners`,
       dollarValue: basicValue,
+      nivelMinimo: "activado",
       available:
-        effectivePoints >= MIN_REDEEM_POINTS && redeemCap >= basicValue,
+        spendablePoints >= MIN_REDEEM_POINTS && redeemCap >= basicValue,
       reason:
-        effectivePoints < MIN_REDEEM_POINTS
-          ? `Te faltan ${MIN_REDEEM_POINTS - effectivePoints} pts`
+        spendablePoints < MIN_REDEEM_POINTS
+          ? `Te faltan ${MIN_REDEEM_POINTS - spendablePoints} pts`
           : redeemCap < basicValue
             ? "Tu comisión mensual no respalda este canje aún"
             : undefined,
     },
     {
-      id: "verde",
+      id: "cuota-cero",
       label: "Cuota Cero",
       pointsCost: VERDE_LEVEL_POINTS,
       benefit: "Cuota de manejo mensual completa cubierta",
       dollarValue: parseFloat(
         (VERDE_LEVEL_POINTS * POINTS_TO_DOLLARS_RATE).toFixed(2),
       ),
+      nivelMinimo: "verde",
       available:
-        effectivePoints >= VERDE_LEVEL_POINTS &&
+        spendablePoints >= VERDE_LEVEL_POINTS &&
         redeemCap >= VERDE_LEVEL_POINTS * POINTS_TO_DOLLARS_RATE,
       reason:
-        effectivePoints < VERDE_LEVEL_POINTS
-          ? `Te faltan ${VERDE_LEVEL_POINTS - effectivePoints} pts`
+        spendablePoints < VERDE_LEVEL_POINTS
+          ? `Te faltan ${VERDE_LEVEL_POINTS - spendablePoints} pts`
           : redeemCap < VERDE_LEVEL_POINTS * POINTS_TO_DOLLARS_RATE
             ? "Tu comisión mensual no respalda este canje"
             : undefined,
     },
     {
-      id: "guardian",
+      id: "milla-diners",
       label: "1 Milla Diners",
       pointsCost: GUARDIAN_POINTS_PER_MILE,
       benefit: "1 milla del programa Diners (programa premium existente)",
       dollarValue: 0, // valor en millas, no en dólares directos
-      available: effectivePoints >= GUARDIAN_POINTS_PER_MILE,
+      nivelMinimo: "guardian",
+      available: spendablePoints >= GUARDIAN_POINTS_PER_MILE,
       reason:
-        effectivePoints < GUARDIAN_POINTS_PER_MILE
-          ? `Te faltan ${GUARDIAN_POINTS_PER_MILE - effectivePoints} pts`
+        spendablePoints < GUARDIAN_POINTS_PER_MILE
+          ? `Te faltan ${GUARDIAN_POINTS_PER_MILE - spendablePoints} pts`
           : undefined,
+    },
+    {
+      id: "bono-predial",
+      label: "Bono Predial",
+      pointsCost: VERDE_LEVEL_POINTS,
+      benefit: "Abono al impuesto predial municipal",
+      dollarValue: parseFloat(
+        (VERDE_LEVEL_POINTS * POINTS_TO_DOLLARS_RATE).toFixed(2),
+      ),
+      nivelMinimo: "verde",
+      available:
+        spendablePoints >= VERDE_LEVEL_POINTS &&
+        redeemCap >= VERDE_LEVEL_POINTS * POINTS_TO_DOLLARS_RATE,
+      reason:
+        spendablePoints < VERDE_LEVEL_POINTS
+          ? `Te faltan ${VERDE_LEVEL_POINTS - spendablePoints} pts`
+          : redeemCap < VERDE_LEVEL_POINTS * POINTS_TO_DOLLARS_RATE
+            ? "Tu comisión mensual no respalda este canje"
+            : undefined,
+    },
+    {
+      id: "eco-aliado",
+      label: "Eco-Aliado",
+      pointsCost: MIN_REDEEM_POINTS,
+      benefit: "Descuento en comercios eco-aliados de la red Diners",
+      dollarValue: basicValue,
+      nivelMinimo: "activado",
+      available:
+        spendablePoints >= MIN_REDEEM_POINTS && redeemCap >= basicValue,
+      reason:
+        spendablePoints < MIN_REDEEM_POINTS
+          ? `Te faltan ${MIN_REDEEM_POINTS - spendablePoints} pts`
+          : redeemCap < basicValue
+            ? "Tu comisión mensual no respalda este canje aún"
+            : undefined,
     },
   ];
 }

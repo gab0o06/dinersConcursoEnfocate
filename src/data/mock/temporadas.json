@@ -1,0 +1,25 @@
+[
+  {
+    "id": "temporada-verano-2026",
+    "nombre": "Verano Verde 2026",
+    "inicio": "2026-10-01",
+    "fin": "2026-12-31",
+    "multiplicadoresMcc": {
+      "4111": 2,
+      "5999": 1.5
+    },
+    "retosEspeciales": [
+      {
+        "id": "reto-bici",
+        "nombre": "Pedalea la ciudad",
+        "ptsMeta": 500
+      }
+    ],
+    "banner": {
+      "titulo": "🌿 Verano Verde",
+      "descripcion": "Duplica tus puntos en Metro hasta diciembre",
+      "color": "#277855"
+    },
+    "rankingGrupal": true
+  }
+]

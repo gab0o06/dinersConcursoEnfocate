@@ -131,17 +131,24 @@ export function getRuleForMcc(mcc: number): MccRule {
 /**
  * Calcula EcoPoints y CO₂ para una transacción individual.
  * Los puntos se calculan antes de aplicar el tope mensual.
+ *
+ * @param multiplierActive - Si true, aplica multiplicador Top-of-Wallet ×1.5
  */
 export function scoreTransaction(
   transactionId: string,
   amount: number,
   mcc: number,
   date: Date = new Date(),
+  multiplierActive?: boolean,
 ): ScoredTransaction {
   const rule = getRuleForMcc(mcc);
 
   const rawPoints = amount * rule.pointsPerDollar;
-  const ecoPoints = Math.floor(rawPoints); // siempre enteros
+  const basePoints = Math.floor(rawPoints); // siempre enteros
+  // Aplicar multiplicador Top-of-Wallet ×1.5 si está activo
+  const ecoPoints = multiplierActive
+    ? Math.floor(basePoints * 1.5)
+    : basePoints;
   const co2SavedKg = parseFloat((amount * rule.co2SavedKgPerDollar).toFixed(3));
   const commissionGenerated = parseFloat(
     (amount * rule.commissionRate).toFixed(4),
@@ -199,10 +206,27 @@ export function calculateMonthlyCOIScore(
 
 /**
  * Verifica si el usuario califica para el bonus mensual de bajo carbono.
- * Condición: score COI >= 6 (equivale a ~4.8 kg CO₂ evitado ese mes)
+ *
+ * Condiciones (cualquiera es suficiente):
+ *  1. Score COI >= 6 (equivale a ~4.8 kg CO₂ evitado ese mes)
+ *  2. Intensidad CO₂ del mes ≤ 0.6 kg/$10
+ *     (totalCo2Saved / totalSpent * 10 <= 0.6)
  */
-export function qualifiesForMonthlyBonus(coiScore: number): boolean {
-  return coiScore >= 6;
+export function qualifiesForMonthlyBonus(
+  coiScore: number,
+  totalCo2Saved?: number,
+  totalSpent?: number,
+): boolean {
+  if (coiScore >= 6) return true;
+  if (
+    totalCo2Saved !== undefined &&
+    totalSpent !== undefined &&
+    totalSpent > 0
+  ) {
+    const intensity = (totalCo2Saved / totalSpent) * 10;
+    return intensity <= 0.6;
+  }
+  return false;
 }
 
 export const MONTHLY_BONUS_POINTS = 100;

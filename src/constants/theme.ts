@@ -12,6 +12,25 @@ export const CSolors = {
   track: "#D9D9D9",
 };
 
+export const Colors = {
+  light: {
+    text: "#000000",
+    background: "#ffffff",
+    backgroundElement: "#F0F0F3",
+    backgroundSelected: "#E0E1E6",
+    textSecondary: "#60646C",
+  },
+  dark: {
+    text: "#ffffff",
+    background: "#000000",
+    backgroundElement: "#212225",
+    backgroundSelected: "#2E3135",
+    textSecondary: "#B0B4BA",
+  },
+} as const;
+
+export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
 export const COLORS = {
   // Brand principal
   dinersBlue: "#0A1C40",

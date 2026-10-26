@@ -1,11 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import ChallengeCard from "../../../components/ChallengeCard";
 import EcoHeader from "../../../components/EcoHeader";
 import EquivalenceCard from "../../../components/EquivalenceCard";
 import ValidationCard from "../../../components/ValidationCard";
+import { ECOCLUB } from "../../../config/ecoclub.config";
+import { MOCK_USUARIO } from "../../../data/mock/usuario";
+import { getLevelLabel } from "../../../lib/levels";
 import {
   selectAmountToMultiplier,
   selectMultiplierActive,
@@ -31,9 +34,11 @@ export default function EcoScreen() {
   const financials       = useEcoStore((s) => s.financials);
   const stravaKm         = useEcoStore((s) => s.strava.totalKm);
   const reciVeciKg       = useEcoStore((s) => s.reciVeciKgTotal);
+  const nivelActual      = useEcoStore((s) => s.nivelActual);
 
-  const co2Max        = 8; // referencia IPCC para normalizar el gauge
+  const co2Max        = ECOCLUB.co2Max; // referencia calibrada para normalizar el gauge
   const billingCurrent = financials?.totalSpent ?? 0;
+  const levelLabel     = getLevelLabel(nivelActual);
 
   return (
     <View style={styles.screen}>
@@ -44,8 +49,19 @@ export default function EcoScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.greetingRow}>
-          <Text style={styles.greeting}>¡Hola, Diners!</Text>
-          <View style={styles.points}>
+          <View>
+            <Text style={styles.greeting}>¡Hola, {MOCK_USUARIO.nombre}!</Text>
+            <View style={styles.levelBadge}>
+              <MaterialCommunityIcons name="shield-check" size={14} color="#277855" />
+              <Text style={styles.levelBadgeText}>Nivel {levelLabel}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.points}
+            onPress={() => router.push("/(tabs)/ecoclub/recompensas")}
+            activeOpacity={0.7}
+          >
             <MaterialCommunityIcons
               name="leaf"
               size={18}
@@ -54,7 +70,7 @@ export default function EcoScreen() {
             />
             <Text style={styles.pointsText}>{validPoints} EcoPoints</Text>
             <Ionicons name="chevron-forward" size={18} color="#111" />
-          </View>
+          </TouchableOpacity>
         </View>
 
         <ValidationCard
@@ -62,7 +78,7 @@ export default function EcoScreen() {
           co2Max={co2Max}
           multiplierActive={multiplierActive}
           billingCurrent={billingCurrent}
-          billingMin={200}
+          billingMin={ECOCLUB.topOfWalletThreshold}
         />
 
         <EquivalenceCard label={co2ToEquivalence(totalCo2Saved)} />
@@ -77,6 +93,26 @@ export default function EcoScreen() {
             </Text>
           </View>
         )}
+
+        {/* Banner de acceso a Recompensas */}
+        <TouchableOpacity
+          style={styles.rewardsCtaBanner}
+          onPress={() => router.push("/(tabs)/ecoclub/recompensas")}
+          activeOpacity={0.8}
+        >
+          <View style={styles.rewardsCtaLeft}>
+            <View style={styles.rewardsCtaIconWrap}>
+              <Ionicons name="gift-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.rewardsCtaTitle}>Catálogo de Recompensas</Text>
+              <Text style={styles.rewardsCtaSubtitle}>
+                Descuentos en tu factura, cuota cero y millas
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color="#277855" />
+        </TouchableOpacity>
 
         <View style={styles.challengesSection}>
           <Text style={styles.sectionTitle}>Retos Activos</Text>
@@ -116,10 +152,10 @@ export default function EcoScreen() {
               }
               headerLabel="ReciVeci Aliado"
               title={reciVeciKg > 0 ? `${reciVeciKg} kg` : "Reciclaje Seguro"}
-              description={reciVeciKg > 0 ? `${Math.floor(reciVeciKg * 20)} pts ganados` : "Conecta con recicladores"}
-              buttonLabel="ACTIVO"
-              active={true}
-              variant="green"
+              description={reciVeciKg > 0 ? `${Math.floor(reciVeciKg * ECOCLUB.retos.reciVeciPtsPorKg)} pts ganados` : "Conecta con recicladores"}
+              buttonLabel={reciVeciKg > 0 ? "ACTIVO" : "ACTIVAR"}
+              active={reciVeciKg > 0}
+              variant={reciVeciKg > 0 ? "green" : "gray"}
               onPress={() => router.push("/(tabs)/ecoclub/reciveci")}
             />
           </View>
@@ -153,15 +189,68 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     color: "#000",
   },
+  levelBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  levelBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#277855",
+  },
   points: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
   },
   pointsText: {
     fontSize: 14,
     fontWeight: "800",
     color: "#000",
+  },
+  rewardsCtaBanner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#A2C7B4",
+  },
+  rewardsCtaLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  rewardsCtaIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#277855",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  rewardsCtaTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111111",
+  },
+  rewardsCtaSubtitle: {
+    fontSize: 11,
+    color: "#666666",
+    marginTop: 2,
   },
   activationBanner: {
     flexDirection: "row",

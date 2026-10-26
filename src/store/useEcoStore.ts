@@ -19,6 +19,7 @@ import {
   MOCK_TRANSACTIONS,
   type RawTransaction,
 } from "../data/mockTransactions";
+import { type NivelEcoClub } from "../config/ecoclub.config";
 import {
   calculateMonthlyCOIScore,
   calculateMonthlyFinancials as _calculateMonthlyFinancials,
@@ -33,6 +34,7 @@ import {
   type MonthlyFinancialSummary,
   type PointsBatch,
   type RedeemOption,
+  type RedeemOptionId,
   type ScoredTransaction,
 } from "../services/ecoPointsEngine";
 
@@ -61,6 +63,11 @@ interface EcoState {
 
   // --- Puntos ---
   pointsBatches: PointsBatch[];
+
+  // --- Nivel y canjes ---
+  nivelActual: NivelEcoClub;
+  diasActivosConsecutivos: number;
+  canjeadoEsteMes: number;
 
   // --- Resumen calculado ---
   financials: MonthlyFinancialSummary | null;
@@ -104,7 +111,10 @@ interface EcoActions {
   addReciVeciDelivery: (kg: number, materials: string[]) => void;
 
   /** Canjea puntos (retorna true si el canje fue exitoso) */
-  redeemPoints: (optionId: "basico" | "verde" | "guardian") => boolean;
+  redeemPoints: (optionId: RedeemOptionId | string) => boolean;
+
+  /** Cambia el nivel actual (útil para demos) */
+  setNivel: (nivel: NivelEcoClub) => void;
 
   /** Recalcula todo (útil al volver al foreground) */
   recalculate: () => void;
@@ -142,6 +152,9 @@ export const useEcoStore = create<EcoState & EcoActions>()(
       rawTransactions: [],
       scoredTransactions: [],
       pointsBatches: [],
+      nivelActual: "activado",
+      diasActivosConsecutivos: 52,
+      canjeadoEsteMes: 0,
       financials: INITIAL_FINANCIALS,
       coiScore: 0,
       totalCo2Saved: 0,
@@ -189,10 +202,15 @@ export const useEcoStore = create<EcoState & EcoActions>()(
         }
 
         // Resumen financiero
-        const financials = _calculateMonthlyFinancials(scored, finalBatches);
+        const financials = _calculateMonthlyFinancials(
+          scored,
+          finalBatches,
+          get().nivelActual,
+        );
         const redeemOptions = getRedeemOptions(
           getValidPoints(finalBatches),
           financials.redeemCap,
+          get().canjeadoEsteMes,
         );
 
         set({
@@ -254,8 +272,19 @@ export const useEcoStore = create<EcoState & EcoActions>()(
 
       // -----------------------------------------------------------------------
       redeemPoints: (optionId) => {
-        const { redeemOptions, pointsBatches, financials } = get();
-        const option = redeemOptions.find((o) => o.id === optionId);
+        const { redeemOptions, pointsBatches, financials, canjeadoEsteMes } = get();
+        const normalizedId =
+          optionId === "basico"
+            ? "eco-cashback"
+            : optionId === "verde"
+              ? "cuota-cero"
+              : optionId === "guardian"
+                ? "milla-diners"
+                : optionId;
+
+        const option = redeemOptions.find(
+          (o) => o.id === optionId || o.id === normalizedId,
+        );
 
         if (!option?.available) return false;
 
@@ -271,28 +300,44 @@ export const useEcoStore = create<EcoState & EcoActions>()(
           })
           .filter((batch) => batch.points > 0);
 
+        const newCanjeado = canjeadoEsteMes + option.pointsCost;
         const updatedRedeemOptions = getRedeemOptions(
           getValidPoints(updatedBatches),
           financials?.redeemCap ?? 0,
+          newCanjeado,
         );
 
-        set({ pointsBatches: updatedBatches, redeemOptions: updatedRedeemOptions });
+        set({
+          pointsBatches: updatedBatches,
+          redeemOptions: updatedRedeemOptions,
+          canjeadoEsteMes: newCanjeado,
+        });
         return true;
+      },
+
+      setNivel: (nivel) => {
+        set({ nivelActual: nivel });
+        get().recalculate();
       },
 
       // -----------------------------------------------------------------------
       recalculate: () => {
-        const { rawTransactions, pointsBatches } = get();
+        const { rawTransactions, pointsBatches, nivelActual, canjeadoEsteMes } = get();
         if (rawTransactions.length === 0) return;
 
         const scored = rawTransactions.map((tx) =>
           scoreTransaction(tx.id, tx.amount, tx.mcc, tx.date),
         );
         const { totalCo2Saved, coiScore } = calculateMonthlyCOIScore(scored);
-        const financials = _calculateMonthlyFinancials(scored, pointsBatches);
+        const financials = _calculateMonthlyFinancials(
+          scored,
+          pointsBatches,
+          nivelActual,
+        );
         const redeemOptions = getRedeemOptions(
           getValidPoints(pointsBatches),
           financials.redeemCap,
+          canjeadoEsteMes,
         );
 
         set({ scoredTransactions: scored, financials, coiScore, totalCo2Saved, redeemOptions });
@@ -307,6 +352,9 @@ export const useEcoStore = create<EcoState & EcoActions>()(
       partialize: (state) => ({
         rawTransactions: state.rawTransactions,
         pointsBatches: state.pointsBatches,
+        nivelActual: state.nivelActual,
+        diasActivosConsecutivos: state.diasActivosConsecutivos,
+        canjeadoEsteMes: state.canjeadoEsteMes,
         strava: state.strava,
         reciVeciKgTotal: state.reciVeciKgTotal,
         reciVeciDeliveries: state.reciVeciDeliveries,

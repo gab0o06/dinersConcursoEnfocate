@@ -20,6 +20,10 @@ export default function EcoClubLayout() {
       <Stack.Screen name="km-verdes" />
       <Stack.Screen name="reciveci" />
       <Stack.Screen name="metro" />
+
+      {/* Pantallas de recompensas y pagos */}
+      <Stack.Screen name="recompensas" />
+      <Stack.Screen name="pago-blu" />
     </Stack>
   );
 }

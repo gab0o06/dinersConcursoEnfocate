@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
+import { ECOCLUB } from "../../../config/ecoclub.config";
 import { useEcoStore } from "../../../store/useEcoStore";
 
 // OBLIGATORIO: Cierra el navegador al recibir la respuesta de Strava
@@ -183,9 +184,9 @@ export default function KmVerdesScreen() {
     return `${mins}m ${seconds % 60}s`;
   };
 
-  const metaKm = 35;
+  const metaKm = ECOCLUB.retos.stravaMetaKm;
   const progressPercentage = Math.min((totalKm / metaKm) * 100, 100);
-  const ecoPointsEarned = Math.floor(totalKm * 5); // 5 pts/km
+  const ecoPointsEarned = Math.floor(totalKm * ECOCLUB.retos.stravaPtsPorKm);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -268,7 +269,7 @@ export default function KmVerdesScreen() {
                   <View style={styles.pointsBadge}>
                     <Ionicons name="leaf" size={14} color="#1E754C" />
                     <Text style={styles.pointsBadgeText}>
-                      {ecoPointsEarned} EcoPoints ganados (5 pts/km)
+                      {ecoPointsEarned} EcoPoints ganados ({ECOCLUB.retos.stravaPtsPorKm} pts/km)
                     </Text>
                   </View>
                 </>
@@ -312,7 +313,7 @@ export default function KmVerdesScreen() {
                         {(item.distance / 1000).toFixed(2)} km
                       </Text>
                       <Text style={styles.distancePoints}>
-                        +{Math.floor((item.distance / 1000) * 5)} pts
+                        +{Math.floor((item.distance / 1000) * ECOCLUB.retos.stravaPtsPorKm)} pts
                       </Text>
                     </View>
                   </View>

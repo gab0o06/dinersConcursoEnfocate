@@ -1,0 +1,57 @@
+[
+  {
+    "id": "aliado-001",
+    "nombre": "Tienda Granel Sustentable",
+    "categoria": "Supermercado Eco",
+    "plan": "Premium",
+    "descripcion": "Productos a granel sin empaque plástico. +3× EcoPoints.",
+    "direccion": "Av. 6 de Diciembre N34-45, Quito",
+    "coordenadas": { "lat": -0.1807, "lng": -78.4678 },
+    "mcc": 5999,
+    "logoColor": "#277855"
+  },
+  {
+    "id": "aliado-002",
+    "nombre": "Taller Bici Quito Verde",
+    "categoria": "Movilidad",
+    "plan": "Destacado",
+    "descripcion": "Reparación de bicicletas y accesorios eco. +3× EcoPoints.",
+    "direccion": "Calle La Niña E6-21, Quito",
+    "coordenadas": { "lat": -0.2105, "lng": -78.4895 },
+    "mcc": 5999,
+    "logoColor": "#1E754C"
+  },
+  {
+    "id": "aliado-003",
+    "nombre": "Orgánico Mercado Quito",
+    "categoria": "Alimentos",
+    "plan": "Básico",
+    "descripcion": "Frutas y verduras orgánicas de productores locales.",
+    "direccion": "Mercado El Labrador, Quito Norte",
+    "coordenadas": { "lat": -0.1234, "lng": -78.4567 },
+    "mcc": 5999,
+    "logoColor": "#3B7D3B"
+  },
+  {
+    "id": "aliado-004",
+    "nombre": "EcoLimpieza Natural",
+    "categoria": "Hogar",
+    "plan": "Básico",
+    "descripcion": "Productos de limpieza biodegradables y sin plástico.",
+    "direccion": "Centro Comercial el Recreo, Local 45",
+    "coordenadas": { "lat": -0.2893, "lng": -78.5234 },
+    "mcc": 5999,
+    "logoColor": "#5B9A6E"
+  },
+  {
+    "id": "aliado-005",
+    "nombre": "Solar Panel Quito",
+    "categoria": "Energía",
+    "plan": "Premium",
+    "descripcion": "Instalación y mantenimiento de paneles solares residenciales.",
+    "direccion": "Av. Shyris N34-128, Quito",
+    "coordenadas": { "lat": -0.1689, "lng": -78.4812 },
+    "mcc": 5999,
+    "logoColor": "#F4A261"
+  }
+]

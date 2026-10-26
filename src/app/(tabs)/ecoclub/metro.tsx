@@ -2,7 +2,6 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Switch,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
+import { ECOCLUB } from "../../../config/ecoclub.config";
 import { useEcoStore } from "../../../store/useEcoStore";
 
 export default function MetroDinersScreen() {
@@ -32,6 +32,10 @@ export default function MetroDinersScreen() {
 
   // Nivel basado en cantidad de recargas
   const rechargeCount = metroTransactions.length;
+  const maxRecargasBonificadas = ECOCLUB.retos.metroMaxRecargasMes;
+  const recargasBonificadas = Math.min(rechargeCount, maxRecargasBonificadas);
+  const bonusMetroPts = recargasBonificadas * ECOCLUB.retos.metroPtsPorRecarga;
+
   const getLevel = () => {
     if (rechargeCount >= 15) return { name: "Guardián", next: null, progress: 1 };
     if (rechargeCount >= 10) return { name: "Explorador", next: "Guardián", progress: rechargeCount / 15 };
@@ -94,13 +98,23 @@ export default function MetroDinersScreen() {
 
         {/* Sección de la Tarjeta */}
         <View style={styles.cardSection}>
-          <Image
-            source={{
-              uri: "https://via.placeholder.com/600x380/0A467A/FFFFFF?text=Tarjeta+Ciudad",
-            }}
-            style={styles.cardImage}
-            resizeMode="cover"
-          />
+          <View style={styles.cardVisual}>
+            <View style={styles.cardVisualHeader}>
+              <View style={styles.metroBadge}>
+                <Ionicons name="train" size={20} color="#FFFFFF" />
+                <Text style={styles.metroBadgeText}>Metro de Quito</Text>
+              </View>
+              <Text style={styles.dinersLogoMini}>Diners Club</Text>
+            </View>
+            <View style={styles.cardVisualMiddle}>
+              <Text style={styles.cardChipText}>•••• 8820</Text>
+              <Text style={styles.cardVisualSubtitle}>Tarjeta Ciudad Integrada</Text>
+            </View>
+            <View style={styles.cardVisualFooter}>
+              <Text style={styles.cardBalanceLabel}>Saldo recargado</Text>
+              <Text style={styles.cardBalanceValue}>$4.50</Text>
+            </View>
+          </View>
 
           <View style={styles.cardInfoRow}>
             <Text style={styles.cardTitle}>Tarjeta Ciudad</Text>
@@ -144,6 +158,14 @@ export default function MetroDinersScreen() {
             <View
               style={[styles.progressBarFill, { width: `${level.progress * 100}%` }]}
             />
+          </View>
+
+          {/* Bonus recargas con tope mensual */}
+          <View style={styles.bonusBanner}>
+            <MaterialCommunityIcons name="ticket-percent-outline" size={16} color="#277855" />
+            <Text style={styles.bonusBannerText}>
+              Bonus recargas: {recargasBonificadas}/{maxRecargasBonificadas} al mes (+{bonusMetroPts} pts ganados)
+            </Text>
           </View>
 
           {level.next && (
@@ -207,14 +229,46 @@ const styles = StyleSheet.create({
   pointsLabel: { fontSize: 12, color: "#333", textAlign: "right", marginTop: -4 },
 
   cardSection: { marginHorizontal: 20 },
-  cardImage: {
+  cardVisual: {
     width: "100%",
-    height: 220,
-    borderRadius: 16,
+    height: 190,
+    borderRadius: 18,
+    backgroundColor: "#0A3A60",
+    padding: 20,
+    justifyContent: "space-between",
     marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#EAEAEA",
+    shadowColor: "#0A1C40",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
   },
+  cardVisualHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  metroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  metroBadgeText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+  dinersLogoMini: { fontSize: 12, fontWeight: "bold", color: "#A2C7B4", letterSpacing: 1 },
+  cardVisualMiddle: { marginVertical: 10 },
+  cardChipText: { fontSize: 18, color: "#FFFFFF", letterSpacing: 4, fontWeight: "600" },
+  cardVisualSubtitle: { fontSize: 11, color: "#CCE0F5", marginTop: 4 },
+  cardVisualFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  cardBalanceLabel: { fontSize: 11, color: "#CCE0F5" },
+  cardBalanceValue: { fontSize: 20, fontWeight: "800", color: "#FFFFFF" },
   cardInfoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -250,6 +304,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   progressBarFill: { height: "100%", backgroundColor: "#277855", borderRadius: 10 },
+  bonusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E8F3ED",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 8,
+  },
+  bonusBannerText: { fontSize: 12, fontWeight: "600", color: "#277855" },
   unlockText: { fontSize: 10, color: "#555" },
 
   historySection: { marginHorizontal: 20, marginTop: 30 },
