@@ -4,54 +4,97 @@
     "nombre": "Tienda Granel Sustentable",
     "categoria": "Supermercado Eco",
     "plan": "Premium",
-    "descripcion": "Productos a granel sin empaque plástico. +3× EcoPoints.",
+    "descripcion": "Productos a granel sin empaque plástico. Alimentos orgánicos locales.",
     "direccion": "Av. 6 de Diciembre N34-45, Quito",
     "coordenadas": { "lat": -0.1807, "lng": -78.4678 },
     "mcc": 5999,
-    "logoColor": "#277855"
+    "logoColor": "#277855",
+    "beneficio": "15% de descuento directo en caja",
+    "puntosMultiplicador": "3× EcoPoints",
+    "horario": "Lun - Sáb: 08:30 - 19:30"
   },
   {
     "id": "aliado-002",
     "nombre": "Taller Bici Quito Verde",
     "categoria": "Movilidad",
     "plan": "Destacado",
-    "descripcion": "Reparación de bicicletas y accesorios eco. +3× EcoPoints.",
+    "descripcion": "Mantenimiento especializado de bicicletas urbanas y accesorios ecológicos.",
     "direccion": "Calle La Niña E6-21, Quito",
     "coordenadas": { "lat": -0.2105, "lng": -78.4895 },
     "mcc": 5999,
-    "logoColor": "#1E754C"
+    "logoColor": "#1E754C",
+    "beneficio": "10% en repuestos y chequeo gratis",
+    "puntosMultiplicador": "3× EcoPoints",
+    "horario": "Lun - Vie: 09:00 - 18:00"
   },
   {
     "id": "aliado-003",
     "nombre": "Orgánico Mercado Quito",
     "categoria": "Alimentos",
     "plan": "Básico",
-    "descripcion": "Frutas y verduras orgánicas de productores locales.",
+    "descripcion": "Frutas, vegetales y hortalizas agroecológicas de productores andinos.",
     "direccion": "Mercado El Labrador, Quito Norte",
     "coordenadas": { "lat": -0.1234, "lng": -78.4567 },
     "mcc": 5999,
-    "logoColor": "#3B7D3B"
+    "logoColor": "#3B7D3B",
+    "beneficio": "5% en canasta verde semanal",
+    "puntosMultiplicador": "3× EcoPoints",
+    "horario": "Mar - Dom: 07:00 - 15:00"
   },
   {
     "id": "aliado-004",
     "nombre": "EcoLimpieza Natural",
     "categoria": "Hogar",
     "plan": "Básico",
-    "descripcion": "Productos de limpieza biodegradables y sin plástico.",
+    "descripcion": "Detergentes y jabones biodegradables rellenables con envase propio.",
     "direccion": "Centro Comercial el Recreo, Local 45",
     "coordenadas": { "lat": -0.2893, "lng": -78.5234 },
     "mcc": 5999,
-    "logoColor": "#5B9A6E"
+    "logoColor": "#5B9A6E",
+    "beneficio": "Recarga 2x1 en jabón multiuso",
+    "puntosMultiplicador": "3× EcoPoints",
+    "horario": "Lun - Dom: 10:00 - 20:00"
   },
   {
     "id": "aliado-005",
     "nombre": "Solar Panel Quito",
     "categoria": "Energía",
     "plan": "Premium",
-    "descripcion": "Instalación y mantenimiento de paneles solares residenciales.",
+    "descripcion": "Instalación y mantenimiento de soluciones fotovoltaicas residenciales.",
     "direccion": "Av. Shyris N34-128, Quito",
     "coordenadas": { "lat": -0.1689, "lng": -78.4812 },
     "mcc": 5999,
-    "logoColor": "#F4A261"
+    "logoColor": "#D97706",
+    "beneficio": "Auditoría solar gratis + $50 de crédito",
+    "puntosMultiplicador": "3× EcoPoints",
+    "horario": "Lun - Vie: 08:30 - 17:30"
+  },
+  {
+    "id": "aliado-006",
+    "nombre": "Café de Origen Andino",
+    "categoria": "Alimentos",
+    "plan": "Destacado",
+    "descripcion": "Cafetería de especialidad con café de sombra y empaques compostables.",
+    "direccion": "Mariscal Foch E4-12 y Reina Victoria, Quito",
+    "coordenadas": { "lat": -0.2023, "lng": -78.4912 },
+    "mcc": 5999,
+    "logoColor": "#92400E",
+    "beneficio": "Bebida caliente de cortesía al traer termo",
+    "puntosMultiplicador": "3× EcoPoints",
+    "horario": "Lun - Sáb: 07:30 - 20:00"
+  },
+  {
+    "id": "aliado-007",
+    "nombre": "Movilidad Eléctrica Ecocable",
+    "categoria": "Movilidad",
+    "plan": "Premium",
+    "descripcion": "Scooters y bicicletas eléctricas urbanas con garantía y servicio técnico.",
+    "direccion": "Av. República del Salvador N36-84, Quito",
+    "coordenadas": { "lat": -0.1795, "lng": -78.4791 },
+    "mcc": 5999,
+    "logoColor": "#059669",
+    "beneficio": "12% de descuento con Diners Club",
+    "puntosMultiplicador": "3× EcoPoints",
+    "horario": "Lun - Sáb: 10:00 - 19:00"
   }
 ]

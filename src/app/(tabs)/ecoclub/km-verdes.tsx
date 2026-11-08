@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
+import { deleteSecureItem, getSecureItem, setSecureItem } from "../../../lib/storage";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -48,7 +48,7 @@ export default function KmVerdesScreen() {
   const stravaStore       = useEcoStore((s) => s.strava);
 
   // — Estado local de UI —
-  const [isLoading, setIsLoading]   = useState(true);
+  const [isLoading, setIsLoading]   = useState(!stravaStore.accessToken);
   const [accessToken, setAccessToken] = useState<string | null>(
     stravaStore.accessToken,
   );
@@ -70,65 +70,6 @@ export default function KmVerdesScreen() {
     },
     stravaEndpoints,
   );
-
-  // 1. Verificar token almacenado (SecureStore sigue siendo la fuente del token)
-  useEffect(() => {
-    const checkStoredToken = async () => {
-      try {
-        const storedToken = await SecureStore.getItemAsync("strava_access_token");
-        if (storedToken) {
-          setAccessToken(storedToken);
-          fetchStravaActivities(storedToken);
-        } else {
-          setIsLoading(false);
-        }
-      } catch {
-        setIsLoading(false);
-      }
-    };
-    // Si el store ya tiene token, no hace falta volver a llamar SecureStore
-    if (stravaStore.accessToken) {
-      setIsLoading(false);
-    } else {
-      checkStoredToken();
-    }
-  }, []);
-
-  // 2. Escuchar la respuesta de Strava
-  useEffect(() => {
-    if (response?.type === "success" && response.params.code) {
-      exchangeCodeForToken(response.params.code);
-    }
-  }, [response]);
-
-  const exchangeCodeForToken = async (code: string) => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(stravaEndpoints.tokenEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: STRAVA_CLIENT_ID,
-          client_secret: STRAVA_CLIENT_SECRET,
-          code,
-          grant_type: "authorization_code",
-        }),
-      });
-      const data = await res.json();
-
-      if (data.access_token) {
-        await SecureStore.setItemAsync("strava_access_token", data.access_token);
-        if (data.refresh_token) {
-          await SecureStore.setItemAsync("strava_refresh_token", data.refresh_token);
-        }
-        setAccessToken(data.access_token);
-        fetchStravaActivities(data.access_token);
-      }
-    } catch (error) {
-      console.error("Error intercambiando token:", error);
-      setIsLoading(false);
-    }
-  };
 
   const fetchStravaActivities = async (token: string) => {
     setIsLoading(true);
@@ -160,9 +101,66 @@ export default function KmVerdesScreen() {
     }
   };
 
+  const exchangeCodeForToken = async (code: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(stravaEndpoints.tokenEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: STRAVA_CLIENT_ID,
+          client_secret: STRAVA_CLIENT_SECRET,
+          code,
+          grant_type: "authorization_code",
+        }),
+      });
+      const data = await res.json();
+
+      if (data.access_token) {
+        await setSecureItem("strava_access_token", data.access_token);
+        if (data.refresh_token) {
+          await setSecureItem("strava_refresh_token", data.refresh_token);
+        }
+        setAccessToken(data.access_token);
+        fetchStravaActivities(data.access_token);
+      }
+    } catch (error) {
+      console.error("Error intercambiando token:", error);
+      setIsLoading(false);
+    }
+  };
+
+  // 1. Verificar token almacenado
+  useEffect(() => {
+    if (stravaStore.accessToken) {
+      return;
+    }
+    const checkStoredToken = async () => {
+      try {
+        const storedToken = await getSecureItem("strava_access_token");
+        if (storedToken) {
+          setAccessToken(storedToken);
+          fetchStravaActivities(storedToken);
+        } else {
+          setIsLoading(false);
+        }
+      } catch {
+        setIsLoading(false);
+      }
+    };
+    checkStoredToken();
+  }, []);
+
+  // 2. Escuchar la respuesta de Strava
+  useEffect(() => {
+    if (response?.type === "success" && response.params.code) {
+      exchangeCodeForToken(response.params.code);
+    }
+  }, [response]);
+
   const handleLogout = async () => {
-    await SecureStore.deleteItemAsync("strava_access_token");
-    await SecureStore.deleteItemAsync("strava_refresh_token");
+    await deleteSecureItem("strava_access_token");
+    await deleteSecureItem("strava_refresh_token");
     setAccessToken(null);
     setActivities([]);
     setTotalKm(0);

@@ -1,12 +1,16 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import Head from "expo-router/head";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { useColorScheme } from "react-native";
+import { Platform, useColorScheme } from "react-native";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
+import WebPresentationContainer from "@/components/WebPresentationContainer";
 import { useEcoStore } from "@/store/useEcoStore";
 
-SplashScreen.preventAutoHideAsync();
+if (Platform.OS !== "web") {
+  SplashScreen.preventAutoHideAsync();
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -19,12 +23,22 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <Head>
+        <title>EcoClub × Diners Club | BLU</title>
+        <meta
+          name="description"
+          content="EcoClub: Módulo de sostenibilidad e incentivos Diners Club Ecuador - Pitch Final"
+        />
+        <meta name="theme-color" content="#07162C" />
+      </Head>
       <AnimatedSplashOverlay />
-      {/* El Stack maneja la transición entre el Login y los Tabs */}
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
+      <WebPresentationContainer>
+        {/* El Stack maneja la transición entre el Login y los Tabs */}
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </WebPresentationContainer>
     </ThemeProvider>
   );
 }

@@ -55,15 +55,23 @@ export interface LevelState {
 
 /**
  * Calcula el nivel actual basado en días activos consecutivos.
- * Siempre retorna el nivel más alto que los días activos respaldan.
+ * Si el usuario aún no se ha registrado en EcoClub (Capa 0), su nivel es "descubierto".
  */
-export function calculateLevel(diasActivos: number): NivelEcoClub {
+export function calculateLevel(
+  diasActivos: number,
+  isRegistered: boolean = true,
+): NivelEcoClub {
+  if (!isRegistered) {
+    return 'descubierto';
+  }
+
   // Recorre los niveles de mayor a menor para encontrar el primero que califica
   const niveles = [...NIVEL_ORDER].reverse() as NivelEcoClub[];
 
   for (const nivel of niveles) {
+    if (nivel === 'descubierto') continue;
     const diasReq = ECOCLUB.diasParaNivel[nivel as keyof typeof ECOCLUB.diasParaNivel];
-    if (diasActivos >= diasReq) {
+    if (diasReq !== undefined && diasActivos >= diasReq) {
       return nivel;
     }
   }
@@ -78,8 +86,9 @@ export function calculateLevel(diasActivos: number): NivelEcoClub {
 export function getLevelState(
   diasActivos: number,
   mesActivoActual: boolean,
+  isRegistered: boolean = true,
 ): LevelState {
-  const nivel = calculateLevel(diasActivos);
+  const nivel = calculateLevel(diasActivos, isRegistered);
   const topePct = ECOCLUB.topePctPorNivel[nivel];
 
   const nivelIndex = NIVEL_ORDER.indexOf(nivel);
@@ -90,9 +99,13 @@ export function getLevelState(
 
   let diasParaSiguienteNivel: number | null = null;
   if (siguienteNivel !== null) {
-    const diasReqSiguiente =
-      ECOCLUB.diasParaNivel[siguienteNivel as keyof typeof ECOCLUB.diasParaNivel];
-    diasParaSiguienteNivel = Math.max(0, diasReqSiguiente - diasActivos);
+    if (!isRegistered) {
+      diasParaSiguienteNivel = 0;
+    } else {
+      const diasReqSiguiente =
+        ECOCLUB.diasParaNivel[siguienteNivel as keyof typeof ECOCLUB.diasParaNivel];
+      diasParaSiguienteNivel = Math.max(0, diasReqSiguiente - diasActivos);
+    }
   }
 
   return {

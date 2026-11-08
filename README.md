@@ -1,56 +1,79 @@
-# Welcome to your Expo app 👋
+# EcoClub × Diners Club (BLU) — Web & Pitch Edition
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> Prototipo y demostración interactiva de **EcoClub** para el pitch de defensa final ante el jurado de Diners Club Ecuador. 
+> Optimizado para visualización web responsive con **marco interactivo de presentación** en desktop y experiencia 100% nativa en navegadores móviles.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Inicio Rápido (Web)
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+### 1. Ejecutar servidor de desarrollo Web
 ```bash
-npm run reset-project
+pnpm start
+# o también:
+pnpm web
 ```
+Abre automáticamente el navegador en `http://localhost:8081` (o presiona `w` en la consola).
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. Compartir en vivo durante el Pitch (Túnel con QR)
+Si deseas que los jurados o profesores prueben la app desde sus propios teléfonos durante la defensa:
+```bash
+pnpm tunnel
+```
+Esto genera una URL pública segura (`https://*.exp.direct`) y un código QR en la consola que cualquier persona puede escanear en su celular sin instalar APK ni dependencias.
 
-### Other setup steps
+### 3. Compilación estática de producción (Export Web)
+```bash
+pnpm build:web
+```
+Genera los bundles y páginas pre-renderizadas en la carpeta `dist/`.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+### 4. Servir la compilación localmente
+```bash
+pnpm serve
+# o para compilar y servir en un solo comando:
+pnpm preview
+```
+Disponible en `http://localhost:3000`.
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🌐 Despliegue en la Nube (1 Clic)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+El repositorio incluye configuraciones listas para producción:
 
-## Join the community
+* **Vercel** (`vercel.json`):
+  ```bash
+  npx vercel
+  ```
+* **Netlify** (`netlify.toml`):
+  ```bash
+  npx netlify deploy --prod
+  ```
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🎯 Herramientas Integradas para el Pitch de Defensa
+
+Cuando accedes desde una computadora o laptop conectada a un proyector:
+1. **Marco Móvil de Presentación:** Muestra el prototipo en un mockup de smartphone realista centrado, con sombra y proporción perfecta.
+2. **Barra de Navegación Rápida:** Atajos en 1 clic a los momentos clave del pitch:
+   - 🏠 **Home BLU:** Vista bancaria con anzuelo Capa 0 y productos.
+   - 🌿 **EcoClub Dashboard:** Indicador de CO₂, nivel y desglose FIFO de puntos.
+   - 🏬 **Eco-Aliados B2B:** Directorio de comercios, mapa y cupón QR.
+   - 💳 **Pago BLU:** Demostración de canje en tiempo real con descuento variable.
+   - 🎁 **Canjes / Recompensas:** Catálogo de productos sostenibles.
+3. **Selector Capa 0 vs Registrado:** Alterna en vivo entre el usuario no registrado (anzuelo con puntos retroactivos calculados pasivamente) y el usuario activo para demostrar la captación.
+4. **Modo Pantalla Completa:** Botón para expandir o contraer el marco móvil según la necesidad de la pantalla.
+
+> En dispositivos móviles reales (pantallas < 768px), el marco se oculta automáticamente para ofrecer una experiencia fluida de pantalla completa.
+
+---
+
+## 🧪 Pruebas Unitarias
+
+Ejecutar la suite de pruebas del motor financiero y reglas de negocio:
+```bash
+pnpm test
+```
+7 pruebas unitarias pasando al 100%.

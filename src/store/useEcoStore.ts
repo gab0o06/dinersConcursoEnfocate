@@ -68,6 +68,8 @@ interface EcoState {
   nivelActual: NivelEcoClub;
   diasActivosConsecutivos: number;
   canjeadoEsteMes: number;
+  /** Si el usuario está registrado en EcoClub (Capa 0 = false -> descubierto) */
+  isRegistered: boolean;
 
   // --- Resumen calculado ---
   financials: MonthlyFinancialSummary | null;
@@ -116,6 +118,12 @@ interface EcoActions {
   /** Cambia el nivel actual (útil para demos) */
   setNivel: (nivel: NivelEcoClub) => void;
 
+  /** Activa la membresía EcoClub (Capa 0 -> Activado con puntos retroactivos) */
+  registerEcoClub: () => void;
+
+  /** Cambia el estado de registro (útil para switch de demo Capa 0) */
+  setRegistered: (registered: boolean) => void;
+
   /** Recalcula todo (útil al volver al foreground) */
   recalculate: () => void;
 }
@@ -155,6 +163,7 @@ export const useEcoStore = create<EcoState & EcoActions>()(
       nivelActual: "activado",
       diasActivosConsecutivos: 52,
       canjeadoEsteMes: 0,
+      isRegistered: true,
       financials: INITIAL_FINANCIALS,
       coiScore: 0,
       totalCo2Saved: 0,
@@ -320,10 +329,25 @@ export const useEcoStore = create<EcoState & EcoActions>()(
         get().recalculate();
       },
 
+      registerEcoClub: () => {
+        set({ isRegistered: true, nivelActual: "activado" });
+        get().recalculate();
+      },
+
+      setRegistered: (registered) => {
+        set({
+          isRegistered: registered,
+          nivelActual: registered ? "activado" : "descubierto",
+        });
+        get().recalculate();
+      },
+
       // -----------------------------------------------------------------------
       recalculate: () => {
-        const { rawTransactions, pointsBatches, nivelActual, canjeadoEsteMes } = get();
+        const { rawTransactions, pointsBatches, nivelActual, canjeadoEsteMes, isRegistered } = get();
         if (rawTransactions.length === 0) return;
+
+        const effectiveNivel = isRegistered ? nivelActual : "descubierto";
 
         const scored = rawTransactions.map((tx) =>
           scoreTransaction(tx.id, tx.amount, tx.mcc, tx.date),
@@ -332,11 +356,11 @@ export const useEcoStore = create<EcoState & EcoActions>()(
         const financials = _calculateMonthlyFinancials(
           scored,
           pointsBatches,
-          nivelActual,
+          effectiveNivel,
         );
         const redeemOptions = getRedeemOptions(
-          getValidPoints(pointsBatches),
-          financials.redeemCap,
+          isRegistered ? getValidPoints(pointsBatches) : 0,
+          isRegistered ? financials.redeemCap : 0,
           canjeadoEsteMes,
         );
 
@@ -355,6 +379,7 @@ export const useEcoStore = create<EcoState & EcoActions>()(
         nivelActual: state.nivelActual,
         diasActivosConsecutivos: state.diasActivosConsecutivos,
         canjeadoEsteMes: state.canjeadoEsteMes,
+        isRegistered: state.isRegistered,
         strava: state.strava,
         reciVeciKgTotal: state.reciVeciKgTotal,
         reciVeciDeliveries: state.reciVeciDeliveries,

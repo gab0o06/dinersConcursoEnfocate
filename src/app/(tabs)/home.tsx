@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -10,6 +11,9 @@ import {
 } from "react-native";
 import { COLORS } from "../../constants/theme";
 import { ECOCLUB } from "../../config/ecoclub.config";
+import Capa0DescubiertoCard from "../../components/Capa0DescubiertoCard";
+import ChallengesCarousel from "../../components/ChallengesCarousel";
+import SeasonBanner from "../../components/SeasonBanner";
 import {
   selectAmountToMultiplier,
   selectMultiplierActive,
@@ -18,6 +22,7 @@ import {
 } from "../../store/useEcoStore";
 
 export default function HomeScreen() {
+  const router            = useRouter();
   const validPoints       = useEcoStore(selectValidPoints);
   const multiplierActive  = useEcoStore(selectMultiplierActive);
   const amountLeft        = useEcoStore(selectAmountToMultiplier);
@@ -25,13 +30,15 @@ export default function HomeScreen() {
   const reciVeciKgTotal   = useEcoStore((s) => s.reciVeciKgTotal);
   const stravaKm          = useEcoStore((s) => s.strava.totalKm);
   const scoredTransactions = useEcoStore((s) => s.scoredTransactions);
+  const totalCo2Saved     = useEcoStore((s) => s.totalCo2Saved);
+  const isRegistered      = useEcoStore((s) => s.isRegistered);
+  const registerEcoClub   = useEcoStore((s) => s.registerEcoClub);
+  const setRegistered     = useEcoStore((s) => s.setRegistered);
 
   const metroPoints = scoredTransactions
     .filter((tx) => tx.category === "metro")
     .reduce((acc, tx) => acc + tx.ecoPoints, 0);
 
-  const reciVeciPoints = Math.floor(reciVeciKgTotal * ECOCLUB.retos.reciVeciPtsPorKg);
-  const stravaPoints   = Math.floor(stravaKm * ECOCLUB.retos.stravaPtsPorKm);
   const META_RECI_KG   = ECOCLUB.retos.reciVeciMetaKg;
   const META_STRAVA_KM = ECOCLUB.retos.stravaMetaKm;
   const META_METRO_PTS = ECOCLUB.retos.metroMetaPts;
@@ -150,80 +157,76 @@ export default function HomeScreen() {
         </View>
 
         {/* Sección: Tus logros de la semana */}
-        <Text style={styles.sectionTitleOnly}>Tus logros de la semana</Text>
-
-        {/* — Tarjeta EcoClub con datos reales — */}
-        <View style={styles.ecoCard}>
-          {/* Fila 1: EcoPoints totales + multiplicador */}
-          <View style={styles.ecoCardHeader}>
-            <View style={styles.ecoCardTitleRow}>
-              <MaterialCommunityIcons name="leaf" size={18} color="#277855" />
-              <Text style={styles.ecoCardTitle}>EcoClub</Text>
-            </View>
-            {multiplierActive ? (
-              <View style={styles.multiplierBadge}>
-                <Ionicons name="flash" size={12} color="#FFF" />
-                <Text style={styles.multiplierBadgeText}>×2 activo</Text>
-              </View>
-            ) : (
-              <Text style={styles.multiplierInactive}>
-                ${amountLeft.toFixed(0)} para ×2
-              </Text>
-            )}
-          </View>
-
-          <Text style={styles.ecoPointsTotal}>{validPoints} EcoPoints</Text>
-          <Text style={styles.ecoPointsDollarValue}>
-            = ${(validPoints * ECOCLUB.valorPuntoUSD).toFixed(2)} disponibles para tu factura
-          </Text>
-
-          {/* Progreso ReciVeci */}
-          <View style={styles.challengeRow}>
-            <MaterialCommunityIcons name="recycle" size={16} color="#555" />
-            <Text style={styles.challengeLabel}>ReciVeci</Text>
-            <View style={styles.progressBarBg}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${Math.min((reciVeciKgTotal / META_RECI_KG) * 100, 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.challengeStat}>
-              {reciVeciKgTotal}/{META_RECI_KG} kg
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitleOnly}>Tus logros de la semana</Text>
+          <TouchableOpacity
+            style={styles.demoBadge}
+            onPress={() => setRegistered(!isRegistered)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.demoBadgeText}>
+              {isRegistered ? "Ver Capa 0" : "Ver Registrado"}
             </Text>
-          </View>
-
-          {/* Progreso Strava */}
-          <View style={styles.challengeRow}>
-            <Ionicons name="fitness-outline" size={16} color="#555" />
-            <Text style={styles.challengeLabel}>Strava</Text>
-            <View style={styles.progressBarBg}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${Math.min((stravaKm / META_STRAVA_KM) * 100, 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.challengeStat}>{stravaKm}/{META_STRAVA_KM} km</Text>
-          </View>
-
-          {/* Progreso Metro */}
-          <View style={[styles.challengeRow, { marginBottom: 0 }]}>
-            <Ionicons name="train-outline" size={16} color="#555" />
-            <Text style={styles.challengeLabel}>Metro</Text>
-            <View style={styles.progressBarBg}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${Math.min((metroPoints / META_METRO_PTS) * 100, 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.challengeStat}>{metroPoints}/200 pts</Text>
-          </View>
+          </TouchableOpacity>
         </View>
+
+        {/* Si el usuario está en Capa 0 (no registrado): Anzuelo de Adquisición */}
+        {!isRegistered ? (
+          <Capa0DescubiertoCard
+            totalCo2Saved={totalCo2Saved}
+            potentialEcoPoints={validPoints > 0 ? validPoints : 320}
+            potentialDollars={
+              validPoints > 0 ? validPoints * ECOCLUB.valorPuntoUSD : 3.2
+            }
+            onRegister={registerEcoClub}
+            onToggleDemoMode={() => setRegistered(true)}
+            isRegistered={false}
+          />
+        ) : (
+          <>
+            {/* — Tarjeta EcoClub con datos reales — */}
+            <View style={styles.ecoCard}>
+              {/* Fila 1: EcoPoints totales + multiplicador */}
+              <View style={styles.ecoCardHeader}>
+                <View style={styles.ecoCardTitleRow}>
+                  <MaterialCommunityIcons name="leaf" size={18} color="#277855" />
+                  <Text style={styles.ecoCardTitle}>EcoClub</Text>
+                </View>
+                {multiplierActive ? (
+                  <View style={styles.multiplierBadge}>
+                    <Ionicons name="flash" size={12} color="#FFF" />
+                    <Text style={styles.multiplierBadgeText}>×2 activo</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.multiplierInactive}>
+                    ${amountLeft.toFixed(0)} para ×2
+                  </Text>
+                )}
+              </View>
+
+              <Text style={styles.ecoPointsTotal}>{validPoints} EcoPoints</Text>
+              <Text style={styles.ecoPointsDollarValue}>
+                = ${(validPoints * ECOCLUB.valorPuntoUSD).toFixed(2)} disponibles para tu factura
+              </Text>
+
+              {/* Carrusel Deslizable Horizontal de Retos */}
+              <ChallengesCarousel
+                metroPoints={metroPoints}
+                metaMetroPts={META_METRO_PTS}
+                stravaKm={stravaKm}
+                metaStravaKm={META_STRAVA_KM}
+                reciVeciKg={reciVeciKgTotal}
+                metaReciKg={META_RECI_KG}
+                onPressMetro={() => router.push("/(tabs)/ecoclub/metro")}
+                onPressStrava={() => router.push("/(tabs)/ecoclub/km-verdes")}
+                onPressReciVeci={() => router.push("/(tabs)/ecoclub/reciveci")}
+              />
+            </View>
+
+            {/* Banner de Temporada Activa en Home */}
+            <SeasonBanner />
+          </>
+        )}
 
         {/* Sección: Tus accesos directos */}
         <View style={styles.sectionHeader}>
@@ -282,7 +285,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: COLORS.textPrimary,
-    marginBottom: 16,
+    marginBottom: 0,
+  },
+  demoBadge: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  demoBadgeText: {
+    fontSize: 11,
+    color: "#0B2046",
+    fontWeight: "600",
   },
   linkText: { fontSize: 14, color: "#007AFF" },
   productCard: {

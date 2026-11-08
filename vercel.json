@@ -1,0 +1,9 @@
+{
+  "buildCommand": "pnpm expo export -p web",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/$1.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

@@ -1,10 +1,14 @@
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import Capa0DescubiertoCard from "../../../components/Capa0DescubiertoCard";
 import ChallengeCard from "../../../components/ChallengeCard";
 import EcoHeader from "../../../components/EcoHeader";
 import EquivalenceCard from "../../../components/EquivalenceCard";
+import PointsHistoryModal from "../../../components/PointsHistoryModal";
+import SeasonBanner from "../../../components/SeasonBanner";
 import ValidationCard from "../../../components/ValidationCard";
 import { ECOCLUB } from "../../../config/ecoclub.config";
 import { MOCK_USUARIO } from "../../../data/mock/usuario";
@@ -25,9 +29,11 @@ function co2ToEquivalence(co2Kg: number): string {
 
 export default function EcoScreen() {
   const router = useRouter();
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
-  // — Datos del store (reemplazan todos los mocks hardcodeados) —
+  // — Datos del store —
   const validPoints      = useEcoStore(selectValidPoints);
+  const pointsBatches    = useEcoStore((s) => s.pointsBatches);
   const multiplierActive = useEcoStore(selectMultiplierActive);
   const amountLeft       = useEcoStore(selectAmountToMultiplier);
   const totalCo2Saved    = useEcoStore((s) => s.totalCo2Saved);
@@ -35,10 +41,13 @@ export default function EcoScreen() {
   const stravaKm         = useEcoStore((s) => s.strava.totalKm);
   const reciVeciKg       = useEcoStore((s) => s.reciVeciKgTotal);
   const nivelActual      = useEcoStore((s) => s.nivelActual);
+  const isRegistered     = useEcoStore((s) => s.isRegistered);
+  const registerEcoClub  = useEcoStore((s) => s.registerEcoClub);
+  const setRegistered    = useEcoStore((s) => s.setRegistered);
 
-  const co2Max        = ECOCLUB.co2Max; // referencia calibrada para normalizar el gauge
+  const co2Max         = ECOCLUB.co2Max; // referencia calibrada para normalizar el gauge
   const billingCurrent = financials?.totalSpent ?? 0;
-  const levelLabel     = getLevelLabel(nivelActual);
+  const levelLabel     = isRegistered ? getLevelLabel(nivelActual) : "Descubierto";
 
   return (
     <View style={styles.screen}>
@@ -48,18 +57,30 @@ export default function EcoScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+        {/* Cabecera y Saludo */}
         <View style={styles.greetingRow}>
           <View>
             <Text style={styles.greeting}>¡Hola, {MOCK_USUARIO.nombre}!</Text>
             <View style={styles.levelBadge}>
-              <MaterialCommunityIcons name="shield-check" size={14} color="#277855" />
-              <Text style={styles.levelBadgeText}>Nivel {levelLabel}</Text>
+              <MaterialCommunityIcons
+                name={isRegistered ? "shield-check" : "magnify"}
+                size={14}
+                color={isRegistered ? "#277855" : "#0B2046"}
+              />
+              <Text
+                style={[
+                  styles.levelBadgeText,
+                  !isRegistered && { color: "#0B2046" },
+                ]}
+              >
+                Nivel {levelLabel}
+              </Text>
             </View>
           </View>
 
           <TouchableOpacity
             style={styles.points}
-            onPress={() => router.push("/(tabs)/ecoclub/recompensas")}
+            onPress={() => setHistoryModalVisible(true)}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons
@@ -69,10 +90,58 @@ export default function EcoScreen() {
               style={{ transform: [{ scaleX: -1 }] }}
             />
             <Text style={styles.pointsText}>{validPoints} EcoPoints</Text>
-            <Ionicons name="chevron-forward" size={18} color="#111" />
+            <Ionicons name="time-outline" size={16} color="#666" style={{ marginLeft: 2 }} />
           </TouchableOpacity>
         </View>
 
+        {/* Switch de demostración de Capa 0 (No registrado vs Registrado) */}
+        <View style={styles.demoBar}>
+          <Text style={styles.demoBarLabel}>Estado membresía:</Text>
+          <TouchableOpacity
+            style={[styles.demoPill, !isRegistered && styles.demoPillActive]}
+            onPress={() => setRegistered(false)}
+          >
+            <Text
+              style={[
+                styles.demoPillText,
+                !isRegistered && styles.demoPillTextActive,
+              ]}
+            >
+              Capa 0 (Descubierto)
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.demoPill, isRegistered && styles.demoPillActive]}
+            onPress={() => setRegistered(true)}
+          >
+            <Text
+              style={[
+                styles.demoPillText,
+                isRegistered && styles.demoPillTextActive,
+              ]}
+            >
+              Registrado ({levelLabel})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* SI EL USUARIO NO ESTÁ REGISTRADO: Capa 0 — Anzuelo de Adquisición */}
+        {!isRegistered ? (
+          <Capa0DescubiertoCard
+            totalCo2Saved={totalCo2Saved}
+            potentialEcoPoints={validPoints > 0 ? validPoints : 320}
+            potentialDollars={
+              validPoints > 0 ? validPoints * ECOCLUB.valorPuntoUSD : 3.2
+            }
+            onRegister={registerEcoClub}
+            isRegistered={false}
+          />
+        ) : null}
+
+        {/* Banner de Temporada Activa (Verano Verde 2026) */}
+        <SeasonBanner />
+
+        {/* Gauge de CO2 y Validación Diners */}
         <ValidationCard
           co2Value={totalCo2Saved}
           co2Max={co2Max}
@@ -94,6 +163,31 @@ export default function EcoScreen() {
           </View>
         )}
 
+        {/* Banner de Directorio de Eco-Aliados B2B (Nuevo Elemento Implementado) */}
+        <TouchableOpacity
+          style={styles.aliadosBanner}
+          onPress={() => router.push("/(tabs)/ecoclub/eco-aliados")}
+          activeOpacity={0.8}
+        >
+          <View style={styles.aliadosBannerLeft}>
+            <View style={styles.aliadosIconWrap}>
+              <FontAwesome5 name="store" size={18} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.aliadosTitleRow}>
+                <Text style={styles.aliadosTitle}>Directorio Eco-Aliados B2B</Text>
+                <View style={styles.aliadosBadge}>
+                  <Text style={styles.aliadosBadgeText}>3× PUNTOS</Text>
+                </View>
+              </View>
+              <Text style={styles.aliadosSubtitle}>
+                Comercios sostenibles en Quito · Cupones y beneficios QR en caja
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="arrow-forward" size={18} color="#277855" />
+        </TouchableOpacity>
+
         {/* Banner de acceso a Recompensas */}
         <TouchableOpacity
           style={styles.rewardsCtaBanner}
@@ -107,13 +201,14 @@ export default function EcoScreen() {
             <View>
               <Text style={styles.rewardsCtaTitle}>Catálogo de Recompensas</Text>
               <Text style={styles.rewardsCtaSubtitle}>
-                Descuentos en tu factura, cuota cero y millas
+                Descuentos en tu factura, cuota cero y millas Diners
               </Text>
             </View>
           </View>
           <Ionicons name="arrow-forward" size={18} color="#277855" />
         </TouchableOpacity>
 
+        {/* Retos Semanales */}
         <View style={styles.challengesSection}>
           <Text style={styles.sectionTitle}>Retos Activos</Text>
           <View style={styles.challengesRow}>
@@ -164,6 +259,15 @@ export default function EcoScreen() {
         {/* Espaciador inferior para no chocar con el menú flotante */}
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* Modal Desplegable de Historial de Puntos con Expiración FIFO */}
+      <PointsHistoryModal
+        visible={historyModalVisible}
+        onClose={() => setHistoryModalVisible(false)}
+        batches={pointsBatches}
+        totalValidPoints={validPoints}
+        pointsAsDollars={validPoints * ECOCLUB.valorPuntoUSD}
+      />
     </View>
   );
 }
@@ -181,8 +285,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 16,
+    marginBottom: 8,
   },
   greeting: {
     fontSize: 22,
@@ -215,6 +319,105 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     color: "#000",
+  },
+  demoBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    marginHorizontal: 20,
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    gap: 6,
+  },
+  demoBarLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  demoPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: "transparent",
+  },
+  demoPillActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  demoPillText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  demoPillTextActive: {
+    color: "#0B2046",
+    fontWeight: "700",
+  },
+  aliadosBanner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    shadowColor: "#277855",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  aliadosBannerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  aliadosIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#059669",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  aliadosTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  aliadosTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111111",
+  },
+  aliadosBadge: {
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#86EFAC",
+  },
+  aliadosBadgeText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#166534",
+  },
+  aliadosSubtitle: {
+    fontSize: 11,
+    color: "#666666",
+    marginTop: 2,
   },
   rewardsCtaBanner: {
     flexDirection: "row",

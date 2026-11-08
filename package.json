@@ -43,15 +43,18 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
+    "start": "expo start --web",
+    "web": "expo start --web",
+    "build:web": "expo export -p web",
+    "serve": "npx serve dist -l 3000",
+    "preview": "expo export -p web && npx serve dist -l 3000",
+    "tunnel": "expo start --web --tunnel",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web",
     "lint": "eslint .",
-    "tunnel": "expo start --tunnel",
     "format": "prettier --write .",
-    "test": "node scripts/test-engine.mjs"
+    "test": "node scripts/test-engine.mjs",
+    "reset-project": "node ./scripts/reset-project.js"
   },
   "private": true
 }

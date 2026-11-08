@@ -33,6 +33,7 @@ export interface EcoClubPresentation {
   levelState: LevelState;
   levelLabel: string;
   nivelActual: NivelEcoClub;
+  isRegistered: boolean;
 
   // Usuario
   usuario: typeof MOCK_USUARIO;
@@ -52,6 +53,8 @@ export interface EcoClubPresentation {
   // Acciones
   redeemPoints: (optionId: string) => boolean;
   setNivel: (nivel: NivelEcoClub) => void;
+  registerEcoClub: () => void;
+  setRegistered: (registered: boolean) => void;
 }
 
 export function useEcoClub(): EcoClubPresentation {
@@ -67,16 +70,19 @@ export function useEcoClub(): EcoClubPresentation {
   const stravaKm = useEcoStore((s) => s.strava.totalKm);
   const reciVeciKg = useEcoStore((s) => s.reciVeciKgTotal);
   const scoredTransactions = useEcoStore((s) => s.scoredTransactions);
+  const isRegistered = useEcoStore((s) => s.isRegistered);
   const redeemOptions = useEcoStore((s) => s.redeemOptions);
   const redeemPoints = useEcoStore((s) => s.redeemPoints);
   const setNivel = useEcoStore((s) => s.setNivel);
+  const registerEcoClub = useEcoStore((s) => s.registerEcoClub);
+  const setRegistered = useEcoStore((s) => s.setRegistered);
 
   const metroPoints = scoredTransactions
     .filter((tx) => tx.category === "metro")
     .reduce((acc, tx) => acc + tx.ecoPoints, 0);
 
-  const levelState = getLevelState(diasActivos, true);
-  const levelLabel = getLevelLabel(nivelActual);
+  const levelState = getLevelState(diasActivos, true, isRegistered);
+  const levelLabel = isRegistered ? getLevelLabel(nivelActual) : "Descubierto";
 
   const capInPoints = financials
     ? Math.floor(financials.redeemCap / ECOCLUB.valorPuntoUSD)
@@ -103,5 +109,8 @@ export function useEcoClub(): EcoClubPresentation {
     redeemOptions,
     redeemPoints,
     setNivel,
+    isRegistered,
+    registerEcoClub,
+    setRegistered,
   };
 }

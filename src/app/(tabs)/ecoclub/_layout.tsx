@@ -24,6 +24,9 @@ export default function EcoClubLayout() {
       {/* Pantallas de recompensas y pagos */}
       <Stack.Screen name="recompensas" />
       <Stack.Screen name="pago-blu" />
+
+      {/* Pantalla de Directorio Eco-Aliados B2B */}
+      <Stack.Screen name="eco-aliados" />
     </Stack>
   );
 }

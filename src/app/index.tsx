@@ -2,21 +2,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import {
-  Dimensions,
   ImageBackground,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../constants/theme";
 
-const { width, height } = Dimensions.get("window");
-
 export default function LoginScreen() {
   const router = useRouter();
+  const { height: windowHeight } = useWindowDimensions();
+  const bgHeight = Math.min(Math.max(windowHeight * 0.58, 300), 500);
 
   const handleLogin = () => {
     // In a real app, this would trigger FaceID/Biometrics auth
@@ -38,7 +38,7 @@ export default function LoginScreen() {
           source={{
             uri: "https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=2069&auto=format&fit=crop",
           }} // Placeholder for the actual background image
-          style={styles.backgroundImage}
+          style={[styles.backgroundImage, { height: bgHeight }]}
           resizeMode="cover"
         >
           {/* Overlay to ensure text readability if needed (optional) */}
@@ -140,7 +140,6 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     width: "100%",
-    height: height * 0.65, // Takes up about 65% of the screen height
     justifyContent: "flex-start",
     alignItems: "center",
     paddingTop: 60, // Space for status bar
@@ -206,7 +205,7 @@ const styles = StyleSheet.create({
   },
   shortcutItem: {
     alignItems: "center",
-    width: (width - 48) / 4, // Divide available width evenly
+    width: "22%",
   },
   shortcutIconCircle: {
     width: 50,

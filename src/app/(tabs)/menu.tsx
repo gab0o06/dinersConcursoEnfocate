@@ -57,6 +57,13 @@ export default function MenuScreen() {
           sublabel: "Recargas automáticas y cashback",
           onPress: () => router.push("/(tabs)/ecoclub/metro"),
         },
+        {
+          icon: "storefront-outline",
+          iconColor: "#277855",
+          label: "Directorio Eco-Aliados B2B",
+          sublabel: "Comercios sostenibles · Acumula 3× puntos",
+          onPress: () => router.push("/(tabs)/ecoclub/eco-aliados"),
+        },
       ],
     },
     {
