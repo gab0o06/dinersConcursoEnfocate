@@ -10,3 +10,50 @@
     sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
 }
+
+/* @expo/vector-icons Web Font Declarations */
+@font-face {
+  font-family: 'ionicons';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ionicons';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'material-community';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'MaterialCommunityIcons';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Material Design Icons';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'FontAwesome5Free-Solid';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'FontAwesome5Free-Regular';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'FontAwesome5Free-Brand';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'FontAwesome5';
+  src: url('https://cdn.jsdelivr.net/npm/@expo/vector-icons@15.1.1/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf') format('truetype');
+  font-display: swap;
+}

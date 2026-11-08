@@ -2,6 +2,10 @@
   command = "pnpm expo export -p web"
   publish = "dist"
 
+[build.environment]
+  NODE_VERSION = "20"
+  PNPM_FLAGS = "--no-frozen-lockfile"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
