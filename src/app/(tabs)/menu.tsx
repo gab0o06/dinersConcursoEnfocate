@@ -50,20 +50,6 @@ export default function MenuScreen() {
           sublabel: "Aplica tus EcoPoints directo en compras",
           onPress: () => router.push("/(tabs)/ecoclub/pago-blu"),
         },
-        {
-          icon: "train-outline",
-          iconColor: "#0A467A",
-          label: "Metro Diners",
-          sublabel: "Recargas automáticas y cashback",
-          onPress: () => router.push("/(tabs)/ecoclub/metro"),
-        },
-        {
-          icon: "storefront-outline",
-          iconColor: "#277855",
-          label: "Directorio Eco-Aliados B2B",
-          sublabel: "Comercios sostenibles · Acumula 3× puntos",
-          onPress: () => router.push("/(tabs)/ecoclub/eco-aliados"),
-        },
       ],
     },
     {

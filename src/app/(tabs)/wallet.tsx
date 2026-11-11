@@ -50,6 +50,14 @@ export default function WalletScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Aviso de módulo deshabilitado */}
+        <View style={styles.disabledBanner}>
+          <Ionicons name="information-circle-outline" size={18} color="#856404" />
+          <Text style={styles.disabledBannerText}>
+            Módulo Billetera deshabilitado temporalmente
+          </Text>
+        </View>
+
         {/* Tarjeta Diners visual */}
         <View style={styles.cardDiners}>
           <View style={styles.cardTop}>
@@ -501,5 +509,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#277855",
     marginTop: 2,
+  },
+  disabledBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF3CD",
+    borderColor: "#FFEEBA",
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  disabledBannerText: {
+    fontSize: 13,
+    color: "#856404",
+    fontWeight: "600",
+    flex: 1,
   },
 });

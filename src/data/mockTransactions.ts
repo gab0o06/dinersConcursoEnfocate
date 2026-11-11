@@ -23,13 +23,13 @@ const thisMonth = (dayOffset: number) => {
 };
 
 export const MOCK_TRANSACTIONS: RawTransaction[] = [
-  // --- Metro de Quito (MCC 4111) ---
+  // --- Metro de Quito (MCC 4111) — 2 pts/$1 ---
   {
     id: "tx-001",
     date: thisMonth(28),
     merchant: "Metro de Quito - Recarga",
     mcc: 4111,
-    amount: 5.0,
+    amount: 10.0,
     city: "Quito",
   },
   {
@@ -37,7 +37,7 @@ export const MOCK_TRANSACTIONS: RawTransaction[] = [
     date: thisMonth(21),
     merchant: "Metro de Quito - Recarga",
     mcc: 4111,
-    amount: 5.0,
+    amount: 10.0,
     city: "Quito",
   },
   {
@@ -45,7 +45,7 @@ export const MOCK_TRANSACTIONS: RawTransaction[] = [
     date: thisMonth(14),
     merchant: "Metro de Quito - Recarga",
     mcc: 4111,
-    amount: 5.0,
+    amount: 10.0,
     city: "Quito",
   },
   {
@@ -53,25 +53,25 @@ export const MOCK_TRANSACTIONS: RawTransaction[] = [
     date: thisMonth(7),
     merchant: "Metro de Quito - Recarga",
     mcc: 4111,
-    amount: 5.0,
+    amount: 10.0,
     city: "Quito",
   },
-  // --- Gimnasio (MCC 7941) ---
+  // --- Gimnasio (MCC 7941) — 2 pts/$1 ---
   {
     id: "tx-005",
     date: thisMonth(25),
     merchant: "Smart Fit Quito Norte",
     mcc: 7941,
-    amount: 35.0,
+    amount: 45.0,
     city: "Quito",
   },
-  // --- Supermercado (MCC 5411) ---
+  // --- Supermercado (MCC 5411) — 1 pt/$1 ---
   {
     id: "tx-006",
     date: thisMonth(22),
     merchant: "Supermaxi El Jardín",
     mcc: 5411,
-    amount: 67.5,
+    amount: 75.0,
     city: "Quito",
   },
   {
@@ -79,7 +79,7 @@ export const MOCK_TRANSACTIONS: RawTransaction[] = [
     date: thisMonth(8),
     merchant: "Supermaxi CCI",
     mcc: 5411,
-    amount: 54.2,
+    amount: 70.0,
     city: "Quito",
   },
   // --- Eco-aliados (MCC 5999) — 3× puntos ---
@@ -88,7 +88,7 @@ export const MOCK_TRANSACTIONS: RawTransaction[] = [
     date: thisMonth(18),
     merchant: "Tienda Granel Sustentable",
     mcc: 5999,
-    amount: 22.0,
+    amount: 40.0,
     city: "Quito",
   },
   {
@@ -96,16 +96,16 @@ export const MOCK_TRANSACTIONS: RawTransaction[] = [
     date: thisMonth(5),
     merchant: "Taller Bici Quito Verde",
     mcc: 5999,
-    amount: 18.0,
+    amount: 30.0,
     city: "Quito",
   },
-  // --- Restaurantes (MCC 5812) ---
+  // --- Restaurantes (MCC 5812) — 1 pt/$1 ---
   {
     id: "tx-010",
     date: thisMonth(20),
     merchant: "Hasta La Vuelta Señor",
     mcc: 5812,
-    amount: 14.5,
+    amount: 55.0,
     city: "Quito",
   },
   {
@@ -113,16 +113,16 @@ export const MOCK_TRANSACTIONS: RawTransaction[] = [
     date: thisMonth(12),
     merchant: "El Español Restaurante",
     mcc: 5812,
-    amount: 23.0,
+    amount: 50.0,
     city: "Quito",
   },
-  // --- Gasolinera (MCC 5541) — sin bonus verde ---
+  // --- Gasolinera (MCC 5541) — 0.5 pt/$1 ---
   {
     id: "tx-012",
     date: thisMonth(15),
     merchant: "Petroecuador Av. Eloy Alfaro",
     mcc: 5541,
-    amount: 30.0,
+    amount: 140.0,
     city: "Quito",
   },
 ];

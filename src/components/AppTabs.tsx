@@ -17,6 +17,7 @@ export default function AppTabs() {
       <Tabs.Screen
         name="wallet"
         options={{
+          href: null,
           title: "Billetera",
           tabBarIcon: ({ color }) => (
             <Ionicons name="wallet-outline" size={24} color={color} />

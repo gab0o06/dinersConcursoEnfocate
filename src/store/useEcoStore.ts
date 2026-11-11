@@ -175,8 +175,9 @@ export const useEcoStore = create<EcoState & EcoActions>()(
 
       // -----------------------------------------------------------------------
       initialize: () => {
-        if (get().isInitialized) return;
-        // Carga las transacciones mock en el primer arranque
+        const validPoints = getValidPoints(get().pointsBatches);
+        if (get().isInitialized && validPoints === 800) return;
+        // Carga las transacciones mock en el primer arranque para inicializar con 800 ecopoints
         get().processTransactions(MOCK_TRANSACTIONS);
         set({ isInitialized: true });
       },
@@ -370,7 +371,8 @@ export const useEcoStore = create<EcoState & EcoActions>()(
 
     // Configuración de persistencia
     {
-      name: "ecoclub-store",
+      name: "ecoclub-store-v2",
+      version: 2,
       storage: createJSONStorage(() => AsyncStorage),
       // No persistir funciones, solo datos
       partialize: (state) => ({

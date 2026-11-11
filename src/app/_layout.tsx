@@ -96,7 +96,7 @@ export default function RootLayout() {
       </Head>
       <AnimatedSplashOverlay />
       <WebPresentationContainer>
-        {/* El Stack maneja la transición entre el Login y los Tabs */}
+        {/* El Stack navega directo a los Tabs, sin pantalla de login */}
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(tabs)" />
