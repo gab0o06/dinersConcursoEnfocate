@@ -80,6 +80,10 @@ export interface TourProviderProps {
   onStepChange?: (step: TourStep, index: number) => void;
   /** Se ejecuta al terminar (completed = true) o al saltar (false) el tour */
   onFinish?: (completed: boolean) => void;
+  /** Inicia el tour automáticamente al abrir la app (una vez por arranque) */
+  autoStart?: boolean;
+  /** Espera antes del auto-inicio, para dejar terminar el splash (ms) */
+  autoStartDelayMs?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +118,8 @@ export function TourProvider({
   steps = TOUR_STEPS,
   onStepChange,
   onFinish,
+  autoStart = false,
+  autoStartDelayMs = 1200,
 }: TourProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -226,6 +232,21 @@ export function TourProvider({
   );
 
   const startTour = useCallback(() => goToStep(0), [goToStep]);
+
+  // ── Auto-inicio al abrir la app ───────────────────────────────────────────
+
+  const autoStarted = useRef(false);
+
+  useEffect(() => {
+    if (!autoStart || autoStarted.current) return;
+    const timer = setTimeout(() => {
+      // No interrumpir si el usuario ya inició el tour manualmente
+      if (autoStarted.current) return;
+      autoStarted.current = true;
+      if (runId.current === 0) startTour();
+    }, autoStartDelayMs);
+    return () => clearTimeout(timer);
+  }, [autoStart, autoStartDelayMs, startTour]);
 
   const nextStep = useCallback(() => {
     if (stepIndex === null) return;

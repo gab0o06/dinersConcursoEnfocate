@@ -97,7 +97,8 @@ export default function RootLayout() {
         <style type="text/css">{ICON_FONTS_CSS}</style>
       </Head>
       <AnimatedSplashOverlay />
-      <TourProvider>
+      {/* El tour guiado arranca solo al abrir la app */}
+      <TourProvider autoStart>
         <WebPresentationContainer>
           <View style={{ flex: 1 }}>
             {/* El Stack navega directo a los Tabs, sin pantalla de login */}
