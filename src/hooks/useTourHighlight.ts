@@ -1,28 +1,28 @@
 /**
- * useTourHighlight — Hook para registrar un elemento como target del tour
+ * useTourHighlight — Registra un View como target del tour guiado.
  *
  * Uso:
- *   const ref = useTourHighlight("home-weekly-achievement");
- *   <View ref={ref} nativeID="home-weekly-achievement">...</View>
+ *   const tourTarget = useTourHighlight("home-weekly-achievement");
+ *   <View {...tourTarget}>…</View>
  *
- * Registra automáticamente el ref en el TourContext al montar el componente
- * y lo elimina al desmontar.
+ * Devuelve { ref, nativeID, collapsable } listo para esparcir en un <View>:
+ *  - ref:         lo usa TourContext para medir con measureInWindow
+ *  - nativeID:    identificador reconocible (también útil para tests / web id)
+ *  - collapsable: false para que Android no aplane el View y siga siendo medible
  */
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useRef } from "react";
 import { type View } from "react-native";
 import { useTour } from "../contexts/TourContext";
 
-export function useTourHighlight(id: string): RefObject<View> {
+export function useTourHighlight(id: string) {
   const ref = useRef<View>(null);
-  const { registerRef, unregisterRef } = useTour();
+  const { registerTarget, unregisterTarget } = useTour();
 
   useEffect(() => {
-    registerRef(id, ref);
-    return () => {
-      unregisterRef(id);
-    };
-  }, [id, registerRef, unregisterRef]);
+    registerTarget(id, ref);
+    return () => unregisterTarget(id, ref);
+  }, [id, registerTarget, unregisterTarget]);
 
-  return ref;
+  return { ref, nativeID: id, collapsable: false } as const;
 }

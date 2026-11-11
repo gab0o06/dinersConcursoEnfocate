@@ -10,6 +10,7 @@ import EquivalenceCard from "../../../components/EquivalenceCard";
 import PointsHistoryModal from "../../../components/PointsHistoryModal";
 import SeasonBanner from "../../../components/SeasonBanner";
 import ValidationCard from "../../../components/ValidationCard";
+import { useTourHighlight } from "../../../hooks/useTourHighlight";
 import { ECOCLUB } from "../../../config/ecoclub.config";
 import { MOCK_USUARIO } from "../../../data/mock/usuario";
 import { getLevelLabel } from "../../../lib/levels";
@@ -30,6 +31,7 @@ function co2ToEquivalence(co2Kg: number): string {
 export default function EcoScreen() {
   const router = useRouter();
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const validationTarget = useTourHighlight("ecoclub-environmental-validation");
 
   // — Datos del store —
   const validPoints      = useEcoStore(selectValidPoints);
@@ -141,14 +143,16 @@ export default function EcoScreen() {
         {/* Banner de Temporada Activa (Verano Verde 2026) */}
         <SeasonBanner />
 
-        {/* Gauge de CO2 y Validación Diners */}
-        <ValidationCard
-          co2Value={totalCo2Saved}
-          co2Max={co2Max}
-          multiplierActive={multiplierActive}
-          billingCurrent={billingCurrent}
-          billingMin={ECOCLUB.topOfWalletThreshold}
-        />
+        {/* Gauge de CO2 y Validación Diners (target paso 2 del tour) */}
+        <View {...validationTarget}>
+          <ValidationCard
+            co2Value={totalCo2Saved}
+            co2Max={co2Max}
+            multiplierActive={multiplierActive}
+            billingCurrent={billingCurrent}
+            billingMin={ECOCLUB.topOfWalletThreshold}
+          />
+        </View>
 
         <EquivalenceCard label={co2ToEquivalence(totalCo2Saved)} />
 

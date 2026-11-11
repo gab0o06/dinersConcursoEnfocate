@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useEcoStore } from "../store/useEcoStore";
+import { useTour } from "../contexts/TourContext";
 
 interface Props {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ export default function WebPresentationContainer({ children }: Props) {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const [useMobileFrame, setUseMobileFrame] = useState(true);
+  const { startTour } = useTour();
 
   const isRegistered = useEcoStore((s) => s.isRegistered);
   const setRegistered = useEcoStore((s) => s.setRegistered);
@@ -37,6 +39,7 @@ export default function WebPresentationContainer({ children }: Props) {
             useMobileFrame={false}
             onToggleFrame={() => setUseMobileFrame(true)}
             onNavigate={(path) => router.push(path as any)}
+            onStartTour={startTour}
           />
           <View style={styles.fullScreenContent}>{children}</View>
         </View>
@@ -59,6 +62,11 @@ export default function WebPresentationContainer({ children }: Props) {
 
         {/* Atajos rápidos para el expositor */}
         <View style={styles.shortcutsRow}>
+          <TouchableOpacity style={styles.navBtn} onPress={startTour}>
+            <Ionicons name="sparkles" size={14} color="#4ADE80" />
+            <Text style={styles.navBtnText}>Tour guiado</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.navBtn}
             onPress={() => router.push("/(tabs)/home" as any)}
@@ -163,15 +171,20 @@ function FloatingPitchControls({
   useMobileFrame,
   onToggleFrame,
   onNavigate,
+  onStartTour,
 }: {
   isRegistered: boolean;
   onToggleRegistered: () => void;
   useMobileFrame: boolean;
   onToggleFrame: () => void;
   onNavigate: (path: string) => void;
+  onStartTour: () => void;
 }) {
   return (
     <View style={styles.floatingBar}>
+      <TouchableOpacity style={styles.floatingNavBtn} onPress={onStartTour}>
+        <Text style={styles.floatingNavText}>✨ Tour</Text>
+      </TouchableOpacity>
       <TouchableOpacity
         style={styles.floatingNavBtn}
         onPress={() => onNavigate("/(tabs)/home")}

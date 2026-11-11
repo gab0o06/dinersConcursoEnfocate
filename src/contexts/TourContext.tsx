@@ -1,25 +1,39 @@
 /**
- * TourContext — Coordinador central del tour guiado interactivo de EcoClub
+ * TourContext — Controlador del tour guiado interactivo de EcoClub (5 pasos).
  *
- * Responsabilidades:
- *  1. Mantener el paso actual del tour (null = inactivo)
- *  2. Registrar refs de los elementos a resaltar (por nativeID)
- *  3. Coordinar la navegación antes de cada paso
- *  4. Medir la posición/tamaño del elemento target en pantalla
- *  5. Exponer el layout medido para que TourOverlay renderice el spotlight
+ * Flujo de cada paso:
+ *   1. goToStep(i) → status = "navigating", se invoca onStepChange(step)
+ *      (por defecto cambia de pestaña / navega con Expo Router).
+ *   2. Un efecto observa usePathname(): cuando coincide con la ruta del paso,
+ *      espera a que termine la animación de transición y mide el target.
+ *   3. Con el layout medido → status = "showing" y TourOverlay pinta el spotlight.
+ *
+ * Sincronización con la navegación:
+ *   - Si el usuario sale de la pantalla del paso durante el tour, el spotlight
+ *     se oculta (el tooltip queda centrado para poder continuar o saltar) y se
+ *     vuelve a medir automáticamente al regresar.
+ *   - skipTour() cancela cualquier medición/timeout pendiente: nunca bloquea la UI.
  */
 
 import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { type View } from "react-native";
-import { useRouter } from "expo-router";
-import { TOUR_STEPS, type TourStep } from "../config/tourSteps";
+import { usePathname, useRouter } from "expo-router";
+import {
+  navigateToTourStep,
+  TOUR_SCREEN_ROUTES,
+  TOUR_STEPS,
+  type TourStep,
+} from "../config/tourSteps";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -32,33 +46,55 @@ export interface TargetLayout {
   height: number;
 }
 
-export interface TourContextValue {
-  /** Paso actual (1-based). null = tour inactivo */
-  currentStep: number | null;
-  /** Definición completa del paso actual */
-  currentStepDef: TourStep | null;
-  /** Layout medido del elemento target, o null si aún no se midió */
-  targetLayout: TargetLayout | null;
-  /** true mientras se está navegando/esperando que el elemento aparezca */
-  isTransitioning: boolean;
+export type TourStatus = "idle" | "navigating" | "measuring" | "showing";
 
-  /** Iniciar el tour desde el paso 1 */
+export interface TourContextValue {
+  steps: TourStep[];
+  /** Índice 0-based del paso actual. null = tour inactivo */
+  stepIndex: number | null;
+  currentStep: TourStep | null;
+  status: TourStatus;
+  /** Layout (coordenadas de ventana) del target, null si no hay spotlight */
+  targetLayout: TargetLayout | null;
+  isActive: boolean;
+
   startTour: () => void;
-  /** Avanzar al siguiente paso */
   nextStep: () => void;
-  /** Finalizar el tour en cualquier momento */
+  prevStep: () => void;
+  goToStep: (index: number) => void;
+  /** Finaliza el tour en cualquier momento */
   skipTour: () => void;
 
-  /** Registrar un ref de View asociado a un nativeID */
-  registerRef: (id: string, ref: React.RefObject<View>) => void;
-  /** Remover un ref (cuando el componente se desmonta) */
-  unregisterRef: (id: string) => void;
-  /** Forzar una nueva medición del target actual */
+  registerTarget: (id: string, ref: RefObject<View | null>) => void;
+  unregisterTarget: (id: string, ref: RefObject<View | null>) => void;
   remeasure: () => void;
 }
 
+export interface TourProviderProps {
+  children: ReactNode;
+  steps?: TourStep[];
+  /**
+   * Se ejecuta ANTES de posicionar el spotlight de cada paso. Debe llevar al
+   * usuario a la pantalla/pestaña del paso. Por defecto usa Expo Router.
+   */
+  onStepChange?: (step: TourStep, index: number) => void;
+  /** Se ejecuta al terminar (completed = true) o al saltar (false) el tour */
+  onFinish?: (completed: boolean) => void;
+}
+
 // ---------------------------------------------------------------------------
-// Context y hook
+// Constantes
+// ---------------------------------------------------------------------------
+
+/** Espera tras llegar a la ruta para que acabe la animación de la pantalla */
+const TRANSITION_SETTLE_MS = 380;
+/** Si la ruta nunca coincide (p.ej. ruta renombrada), medir igualmente */
+const NAVIGATION_TIMEOUT_MS = 2000;
+const MEASURE_RETRIES = 10;
+const MEASURE_RETRY_DELAY_MS = 120;
+
+// ---------------------------------------------------------------------------
+// Context
 // ---------------------------------------------------------------------------
 
 const TourContext = createContext<TourContextValue | null>(null);
@@ -73,148 +109,221 @@ export function useTour(): TourContextValue {
 // Provider
 // ---------------------------------------------------------------------------
 
-/** Tiempo de espera (ms) después de navegar antes de intentar medir el target */
-const NAVIGATION_SETTLE_MS = 450;
-/** Reintentos máximos de medición si el elemento no está disponible aún */
-const MEASURE_RETRIES = 6;
-const MEASURE_RETRY_DELAY_MS = 150;
-
-export function TourProvider({ children }: { children: ReactNode }) {
+export function TourProvider({
+  children,
+  steps = TOUR_STEPS,
+  onStepChange,
+  onFinish,
+}: TourProviderProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
-  const [currentStep, setCurrentStep] = useState<number | null>(null);
+  const [stepIndex, setStepIndex] = useState<number | null>(null);
+  const [status, setStatus] = useState<TourStatus>("idle");
   const [targetLayout, setTargetLayout] = useState<TargetLayout | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  /** Map de nativeID → ref */
-  const refsMap = useRef<Map<string, React.RefObject<View>>>(new Map());
+  /** targetId → ref del View registrado */
+  const targets = useRef(new Map<string, RefObject<View | null>>());
+  /** Token de ejecución: invalida timeouts/mediciones de pasos anteriores */
+  const runId = useRef(0);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // ---------------------------------------------------------------------------
-  // Ref registration
-  // ---------------------------------------------------------------------------
+  const currentStep = stepIndex !== null ? (steps[stepIndex] ?? null) : null;
 
-  const registerRef = useCallback(
-    (id: string, ref: React.RefObject<View>) => {
-      refsMap.current.set(id, ref);
-    },
-    []
-  );
+  // ── Timers ────────────────────────────────────────────────────────────────
 
-  const unregisterRef = useCallback((id: string) => {
-    refsMap.current.delete(id);
+  const clearTimers = useCallback(() => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // Measure
-  // ---------------------------------------------------------------------------
+  const schedule = useCallback((fn: () => void, ms: number) => {
+    const t = setTimeout(fn, ms);
+    timers.current.push(t);
+  }, []);
 
-  const measureTarget = useCallback(
-    (targetId: string, retriesLeft: number = MEASURE_RETRIES): void => {
-      const ref = refsMap.current.get(targetId);
-      if (!ref?.current) {
-        if (retriesLeft > 0) {
-          setTimeout(
-            () => measureTarget(targetId, retriesLeft - 1),
-            MEASURE_RETRY_DELAY_MS
-          );
-        } else {
-          // El elemento no apareció — igualmente mostramos el overlay sin spotlight
-          setTargetLayout(null);
-          setIsTransitioning(false);
-        }
-        return;
-      }
+  useEffect(() => clearTimers, [clearTimers]);
 
-      ref.current.measureInWindow((x, y, width, height) => {
-        if (width === 0 && height === 0 && retriesLeft > 0) {
-          // measureInWindow devolvió ceros → todavía no está en pantalla
-          setTimeout(
-            () => measureTarget(targetId, retriesLeft - 1),
-            MEASURE_RETRY_DELAY_MS
-          );
-          return;
-        }
-        setTargetLayout({ x, y, width, height });
-        setIsTransitioning(false);
-      });
+  // ── Registro de targets ───────────────────────────────────────────────────
+
+  const registerTarget = useCallback(
+    (id: string, ref: RefObject<View | null>) => {
+      targets.current.set(id, ref);
     },
-    []
+    [],
   );
 
-  const remeasure = useCallback(() => {
-    if (currentStep === null) return;
-    const stepDef = TOUR_STEPS.find((s) => s.id === currentStep);
-    if (stepDef) measureTarget(stepDef.targetId);
-  }, [currentStep, measureTarget]);
+  const unregisterTarget = useCallback(
+    (id: string, ref: RefObject<View | null>) => {
+      // Solo borrar si sigue siendo el mismo ref (evita carreras al remontar)
+      if (targets.current.get(id) === ref) targets.current.delete(id);
+    },
+    [],
+  );
 
-  // ---------------------------------------------------------------------------
-  // Navigation helper
-  // ---------------------------------------------------------------------------
+  // ── Medición ──────────────────────────────────────────────────────────────
+
+  const measure = useCallback(
+    (targetId: string, token: number) => {
+      const attempt = (retriesLeft: number): void => {
+        if (token !== runId.current) return;
+
+        const retry = () => {
+          if (retriesLeft > 0) {
+            schedule(() => attempt(retriesLeft - 1), MEASURE_RETRY_DELAY_MS);
+          } else {
+            // El target no apareció: mostramos el tooltip sin spotlight
+            setTargetLayout(null);
+            setStatus("showing");
+          }
+        };
+
+        const node = targets.current.get(targetId)?.current;
+        if (!node) return retry();
+
+        node.measureInWindow((x, y, width, height) => {
+          if (token !== runId.current) return;
+          if (!width || !height) return retry();
+          setTargetLayout({ x, y, width, height });
+          setStatus("showing");
+        });
+      };
+      attempt(MEASURE_RETRIES);
+    },
+    [schedule],
+  );
+
+  // ── Navegación entre pasos ────────────────────────────────────────────────
+
+  const finish = useCallback(
+    (completed: boolean) => {
+      runId.current += 1;
+      clearTimers();
+      setStepIndex(null);
+      setStatus("idle");
+      setTargetLayout(null);
+      onFinish?.(completed);
+    },
+    [clearTimers, onFinish],
+  );
 
   const goToStep = useCallback(
-    (step: number) => {
-      const stepDef = TOUR_STEPS.find((s) => s.id === step);
-      if (!stepDef) return;
+    (index: number) => {
+      const step = steps[index];
+      if (!step) return;
 
-      setIsTransitioning(true);
+      runId.current += 1;
+      clearTimers();
       setTargetLayout(null);
-      setCurrentStep(step);
+      setStepIndex(index);
+      setStatus("navigating");
 
-      // Navegar a la pantalla correcta, luego esperar que se asiente y medir
-      stepDef.navigate(router);
-
-      setTimeout(() => {
-        measureTarget(stepDef.targetId);
-      }, NAVIGATION_SETTLE_MS);
+      // Callback de cambio de paso: cambia pestaña / navega ANTES del spotlight
+      if (onStepChange) onStepChange(step, index);
+      else navigateToTourStep(router, step);
     },
-    [router, measureTarget]
+    [steps, clearTimers, onStepChange, router],
   );
 
-  // ---------------------------------------------------------------------------
-  // Public actions
-  // ---------------------------------------------------------------------------
-
-  const startTour = useCallback(() => {
-    goToStep(1);
-  }, [goToStep]);
+  const startTour = useCallback(() => goToStep(0), [goToStep]);
 
   const nextStep = useCallback(() => {
-    if (currentStep === null) return;
-    const nextIdx = currentStep + 1;
-    if (nextIdx > TOUR_STEPS.length) {
-      skipTour();
-      return;
+    if (stepIndex === null) return;
+    if (stepIndex >= steps.length - 1) finish(true);
+    else goToStep(stepIndex + 1);
+  }, [stepIndex, steps.length, finish, goToStep]);
+
+  const prevStep = useCallback(() => {
+    if (stepIndex === null || stepIndex === 0) return;
+    goToStep(stepIndex - 1);
+  }, [stepIndex, goToStep]);
+
+  const skipTour = useCallback(() => finish(false), [finish]);
+
+  // ── Sincronización paso ↔ ruta actual ─────────────────────────────────────
+
+  const expectedPath = currentStep
+    ? TOUR_SCREEN_ROUTES[currentStep.screen].pathname
+    : null;
+  const onExpectedRoute = expectedPath !== null && pathname === expectedPath;
+
+  /** ¿Estaba el usuario en la ruta del paso en la evaluación anterior? */
+  const wasOnRoute = useRef(false);
+
+  useEffect(() => {
+    const prevOnRoute = wasOnRoute.current;
+    wasOnRoute.current = onExpectedRoute;
+    if (!currentStep) return;
+
+    const token = runId.current;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    if (status === "navigating") {
+      // Ruta alcanzada → esperar la animación; si no, red de seguridad.
+      timer = setTimeout(
+        () => {
+          if (token !== runId.current) return;
+          setStatus("measuring");
+          measure(currentStep.targetId, token);
+        },
+        onExpectedRoute ? TRANSITION_SETTLE_MS : NAVIGATION_TIMEOUT_MS,
+      );
+    } else if (status === "showing" && onExpectedRoute && !prevOnRoute) {
+      // El usuario volvió a la pantalla del paso: re-medir el target
+      timer = setTimeout(
+        () => measure(currentStep.targetId, token),
+        TRANSITION_SETTLE_MS,
+      );
     }
-    goToStep(nextIdx);
-  }, [currentStep, goToStep]);
 
-  const skipTour = useCallback(() => {
-    setCurrentStep(null);
-    setTargetLayout(null);
-    setIsTransitioning(false);
-  }, []);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentStep, status, onExpectedRoute, measure]);
 
-  // ---------------------------------------------------------------------------
-  // Value
-  // ---------------------------------------------------------------------------
+  /** Fuera de la pantalla del paso no hay spotlight (solo tooltip centrado) */
+  const visibleLayout = onExpectedRoute ? targetLayout : null;
 
-  const currentStepDef =
-    currentStep !== null
-      ? (TOUR_STEPS.find((s) => s.id === currentStep) ?? null)
-      : null;
+  const remeasure = useCallback(() => {
+    if (!currentStep || !onExpectedRoute) return;
+    measure(currentStep.targetId, runId.current);
+  }, [currentStep, onExpectedRoute, measure]);
 
-  const value: TourContextValue = {
-    currentStep,
-    currentStepDef,
-    targetLayout,
-    isTransitioning,
-    startTour,
-    nextStep,
-    skipTour,
-    registerRef,
-    unregisterRef,
-    remeasure,
-  };
+  // ── Value ─────────────────────────────────────────────────────────────────
+
+  const value = useMemo<TourContextValue>(
+    () => ({
+      steps,
+      stepIndex,
+      currentStep,
+      status,
+      targetLayout: visibleLayout,
+      isActive: stepIndex !== null,
+      startTour,
+      nextStep,
+      prevStep,
+      goToStep,
+      skipTour,
+      registerTarget,
+      unregisterTarget,
+      remeasure,
+    }),
+    [
+      steps,
+      stepIndex,
+      currentStep,
+      status,
+      visibleLayout,
+      startTour,
+      nextStep,
+      prevStep,
+      goToStep,
+      skipTour,
+      registerTarget,
+      unregisterTarget,
+      remeasure,
+    ],
+  );
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }

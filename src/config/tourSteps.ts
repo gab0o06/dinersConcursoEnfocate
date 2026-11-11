@@ -1,70 +1,119 @@
 /**
- * tourSteps.ts — Configuración de los 5 pasos del tour guiado de EcoClub
+ * tourSteps.ts — Fuente única de verdad del tour guiado de 5 pasos de EcoClub.
  *
- * Cada paso define:
- *  - targetId: nativeID del View a resaltar
- *  - navigate: callback (recibe router) que lleva al usuario a la pantalla correcta
- *  - title / description: texto del tooltip
- *  - padding: espacio extra alrededor del spotlight (default 8px)
+ * Cada paso declara:
+ *  - screen:    pantalla lógica donde vive el elemento (Home, EcoClub, …)
+ *  - targetId:  nativeID / clave del View a resaltar (ver useTourHighlight)
+ *  - title / description / tooltipPosition: contenido del tooltip
+ *
+ * La navegación NO vive en cada paso: se resuelve a partir de `screen`
+ * mediante TOUR_SCREEN_ROUTES, de modo que el TourContext pueda saber cuándo
+ * la navegación terminó comparando el pathname actual con la ruta esperada.
  */
 
-import { type Router } from "expo-router";
+import { type useRouter } from "expo-router";
+
+type Router = ReturnType<typeof useRouter>;
+
+export type TourScreen = "Home" | "EcoClub" | "RetoMetro" | "Menu" | "PagarBLU";
 
 export interface TourStep {
-  id: number;
+  id: string;
   targetId: string;
+  screen: TourScreen;
   title: string;
   description: string;
-  /** Padding en px alrededor del elemento resaltado */
+  tooltipPosition?: "top" | "bottom" | "center";
+  /** Padding en px alrededor del elemento resaltado (default 8) */
   padding?: number;
-  /** Función que navega/cambia pestaña antes de mostrar el spotlight */
-  navigate: (router: Router) => void;
+}
+
+export interface TourScreenRoute {
+  /** Pathname tal como lo devuelve usePathname() (sin grupos como (tabs)) */
+  pathname: string;
+  /** Href para el router */
+  href: string;
+  /**
+   * - "tab":   cambia de pestaña (navigate → reutiliza la pantalla existente
+   *            y hace pop del stack anidado si hacía falta)
+   * - "push":  abre una pantalla de detalle encima del stack
+   */
+  kind: "tab" | "push";
+}
+
+export const TOUR_SCREEN_ROUTES: Record<TourScreen, TourScreenRoute> = {
+  Home: { pathname: "/home", href: "/(tabs)/home", kind: "tab" },
+  EcoClub: { pathname: "/ecoclub", href: "/(tabs)/ecoclub", kind: "tab" },
+  RetoMetro: {
+    pathname: "/ecoclub/metro",
+    href: "/(tabs)/ecoclub/metro",
+    kind: "push",
+  },
+  Menu: { pathname: "/menu", href: "/(tabs)/menu", kind: "tab" },
+  PagarBLU: {
+    pathname: "/ecoclub/pago-blu",
+    href: "/(tabs)/ecoclub/pago-blu",
+    kind: "push",
+  },
+};
+
+/** Navegación por defecto de un paso: cambia de tab o abre la pantalla. */
+export function navigateToTourStep(router: Router, step: TourStep): void {
+  const route = TOUR_SCREEN_ROUTES[step.screen];
+  if (route.kind === "push") {
+    router.push(route.href as never);
+  } else {
+    router.navigate(route.href as never);
+  }
 }
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    id: 1,
+    id: "step-home-logros",
     targetId: "home-weekly-achievement",
-    title: "🌿 Tus Logros de la Semana",
+    screen: "Home",
+    title: "Tu Logro de la Semana",
     description:
-      "Aquí ves tus EcoPoints acumulados y los retos activos del mes. ¡Cada compra sostenible suma!",
+      "Visualiza tus EcoPoints acumulados y explora los retos semanales activos en el carrusel.",
+    tooltipPosition: "bottom",
     padding: 10,
-    navigate: (router) => router.replace("/(tabs)/home"),
   },
   {
-    id: 2,
+    id: "step-ecoclub-validacion",
     targetId: "ecoclub-environmental-validation",
-    title: "🏅 Validación Ambiental",
+    screen: "EcoClub",
+    title: "Validación Ambiental",
     description:
-      "Conecta Strava, ReciVeci y Metro para validar tu impacto verde con datos reales.",
-    padding: 8,
-    navigate: (router) => router.replace("/(tabs)/ecoclub"),
+      "Conecta e integra tus hábitos sostenibles mediante Strava, ReciVeci y Metro de Quito.",
+    tooltipPosition: "bottom",
   },
   {
-    id: 3,
+    id: "step-metro-recargas",
     targetId: "metro-auto-recharge-section",
-    title: "🚇 Recarga Automática Metro",
+    screen: "RetoMetro",
+    title: "Reto Metro & Recargas",
     description:
-      "Activa la recarga automática y gana hasta 50 EcoPoints por cada recarga con tu tarjeta Diners.",
+      "Gestiona tu recarga automática del Metro de Quito y revisa tu historial de viajes sostenibles.",
+    tooltipPosition: "bottom",
     padding: 10,
-    navigate: (router) => router.push("/(tabs)/ecoclub/metro"),
   },
   {
-    id: 4,
+    id: "step-menu-pagar-blu",
     targetId: "menu-pay-with-blu-option",
-    title: "💳 Pagar con BLU",
+    screen: "Menu",
+    title: "Pagar con BLU",
     description:
-      "Desde el menú accedes directo a aplicar tus EcoPoints en tu próxima compra.",
-    padding: 8,
-    navigate: (router) => router.replace("/(tabs)/menu"),
+      "Accede al módulo de pagos para canjear tus puntos en la facturación mensual.",
+    tooltipPosition: "bottom",
   },
   {
-    id: 5,
+    id: "step-pagar-ecopoints-discount",
     targetId: "blu-ecopoints-discount-card",
-    title: "🎁 Descuento en Factura",
+    screen: "PagarBLU",
+    title: "Reducción de Factura",
     description:
-      "Aquí ves cuánto ahorras en tu próximo estado de cuenta usando tus EcoPoints Diners.",
+      "Aplica tus EcoPoints para obtener un descuento directo en el total a pagar de tu tarjeta.",
+    tooltipPosition: "top",
     padding: 12,
-    navigate: (router) => router.push("/(tabs)/ecoclub/pago-blu"),
   },
 ];

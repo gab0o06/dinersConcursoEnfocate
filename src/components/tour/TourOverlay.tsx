@@ -1,225 +1,194 @@
 /**
- * TourOverlay — Overlay de spotlight para el tour guiado de EcoClub
+ * TourOverlay — Spotlight + tooltip del tour guiado de EcoClub.
  *
- * Renderiza:
- *  1. Fondo semi-transparente en 4 rectángulos alrededor del elemento target
- *     (técnica de "4 rectángulos" = funciona en web y nativo sin SVG)
- *  2. Borde verde brillante sobre el elemento resaltado
- *  3. Tooltip con título, descripción y botones Siguiente / Saltar
+ *  - Oscurece la pantalla con 4 rectángulos alrededor del target (funciona en
+ *    web y nativo sin SVG) y dibuja un borde verde sobre el elemento.
+ *  - Las capas oscuras usan pointerEvents="none": el overlay nunca bloquea la
+ *    UI; solo el tooltip captura toques.
+ *  - Convierte las coordenadas de ventana del target a coordenadas locales
+ *    restando el origen del propio overlay (necesario en web, donde la app
+ *    vive dentro del marco de teléfono de WebPresentationContainer).
  *
- * Debe montarse UNA vez en el root layout, dentro de <TourProvider>.
+ * Montar UNA vez, como hermano del navegador raíz, dentro de <TourProvider>.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  type LayoutChangeEvent,
 } from "react-native";
 import { useTour } from "../../contexts/TourContext";
-import { TOUR_STEPS } from "../../config/tourSteps";
 
 const OVERLAY_COLOR = "rgba(0, 0, 0, 0.65)";
-const HIGHLIGHT_BORDER = "#4ADE80"; // green-400
-const PADDING = 8; // default spotlight padding
+const HIGHLIGHT_BORDER = "#4ADE80";
+const DEFAULT_PADDING = 8;
+const TOOLTIP_EST_HEIGHT = 200;
+const GAP = 14;
+const EDGE = 12;
 
 export default function TourOverlay() {
   const {
+    isActive,
+    status,
+    stepIndex,
+    steps,
     currentStep,
-    currentStepDef,
     targetLayout,
-    isTransitioning,
     nextStep,
+    prevStep,
     skipTour,
+    remeasure,
   } = useTour();
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const rootRef = useRef<View>(null);
+  const [origin, setOrigin] = useState({ x: 0, y: 0 });
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [tooltipH, setTooltipH] = useState(TOOLTIP_EST_HEIGHT);
 
-  const isActive = currentStep !== null;
+  const [fade] = useState(() => new Animated.Value(0));
+  const [scale] = useState(() => new Animated.Value(0.94));
+  const visible = isActive && status === "showing";
 
-  // Fade in when step changes
   useEffect(() => {
-    if (isActive && !isTransitioning) {
+    if (visible) {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 6,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fade, { toValue: 1, duration: 260, useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, friction: 7, useNativeDriver: true }),
       ]).start();
     } else {
-      fadeAnim.setValue(0);
-      scaleAnim.setValue(0.92);
+      fade.setValue(0);
+      scale.setValue(0.94);
     }
-  }, [currentStep, isTransitioning]);
+  }, [visible, stepIndex, fade, scale]);
 
-  if (!isActive || isTransitioning) return null;
+  const onRootLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const { width, height } = e.nativeEvent.layout;
+      setSize({ width, height });
+      rootRef.current?.measureInWindow((x, y) => setOrigin({ x, y }));
+      remeasure();
+    },
+    [remeasure],
+  );
 
-  const { width: W, height: H } = Dimensions.get("window");
-  const pad = currentStepDef?.padding ?? PADDING;
+  if (!isActive || !currentStep || stepIndex === null) return null;
 
-  // Spotlight rectangle (with padding)
-  const spot = targetLayout
-    ? {
-        x: Math.max(0, targetLayout.x - pad),
-        y: Math.max(0, targetLayout.y - pad),
-        w: targetLayout.width + pad * 2,
-        h: targetLayout.height + pad * 2,
-      }
-    : null;
+  const W = size.width;
+  const H = size.height;
+  const pad = currentStep.padding ?? DEFAULT_PADDING;
 
-  const isLastStep = currentStep === TOUR_STEPS.length;
-  const stepLabel = `Paso ${currentStep} de ${TOUR_STEPS.length}`;
+  const spot =
+    visible && targetLayout
+      ? (() => {
+          const x = Math.max(0, targetLayout.x - origin.x - pad);
+          const y = Math.max(0, targetLayout.y - origin.y - pad);
+          return {
+            x,
+            y,
+            w: Math.min(W - x, targetLayout.width + pad * 2),
+            h: Math.min(H - y, targetLayout.height + pad * 2),
+          };
+        })()
+      : null;
 
-  // Decide tooltip position: below spotlight, or above if near bottom
-  const tooltipBelow = spot ? spot.y + spot.h + 20 + 150 < H : true;
-  const tooltipTop = spot
-    ? tooltipBelow
-      ? spot.y + spot.h + 16
-      : spot.y - 170
-    : H / 2 - 75;
+  // ── Posición del tooltip ──
+  let tooltipTop = (H - tooltipH) / 2;
+  if (spot && currentStep.tooltipPosition !== "center") {
+    const below = spot.y + spot.h + GAP;
+    const above = spot.y - GAP - tooltipH;
+    const fitsBelow = below + tooltipH <= H - EDGE;
+    const fitsAbove = above >= EDGE;
+    const preferTop = currentStep.tooltipPosition === "top";
+
+    if (preferTop ? fitsAbove : !fitsBelow && fitsAbove) tooltipTop = above;
+    else if (fitsBelow) tooltipTop = below;
+    else tooltipTop = H - tooltipH - EDGE; // target enorme: anclar abajo
+  }
+  tooltipTop = Math.max(EDGE, Math.min(tooltipTop, H - tooltipH - EDGE));
+
+  const total = steps.length;
+  const isLast = stepIndex === total - 1;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* ── 4-rectangle overlay ── */}
-      {spot ? (
-        <>
-          {/* Top */}
-          <View
-            style={[
-              styles.overlay,
-              { top: 0, left: 0, right: 0, height: spot.y },
-            ]}
-            pointerEvents="none"
-          />
-          {/* Left */}
-          <View
-            style={[
-              styles.overlay,
-              {
-                top: spot.y,
-                left: 0,
-                width: spot.x,
-                height: spot.h,
-              },
-            ]}
-            pointerEvents="none"
-          />
-          {/* Right */}
-          <View
-            style={[
-              styles.overlay,
-              {
-                top: spot.y,
-                left: spot.x + spot.w,
-                right: 0,
-                height: spot.h,
-              },
-            ]}
-            pointerEvents="none"
-          />
-          {/* Bottom */}
-          <View
-            style={[
-              styles.overlay,
-              {
-                top: spot.y + spot.h,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              },
-            ]}
-            pointerEvents="none"
-          />
-
-          {/* Spotlight border */}
-          <View
-            style={[
-              styles.spotlightBorder,
-              {
-                top: spot.y,
-                left: spot.x,
-                width: spot.w,
-                height: spot.h,
-              },
-            ]}
-            pointerEvents="none"
-          />
-        </>
-      ) : (
-        // No target → full dim
-        <View
-          style={[styles.overlay, StyleSheet.absoluteFill]}
-          pointerEvents="none"
-        />
-      )}
-
-      {/* ── Tooltip ── */}
-      <Animated.View
-        style={[
-          styles.tooltip,
-          {
-            top: tooltipTop,
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-        pointerEvents="box-none"
-      >
-        {/* Step indicator */}
-        <View style={styles.stepRow}>
-          {TOUR_STEPS.map((s) => (
+    <View
+      ref={rootRef}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="box-none"
+      onLayout={onRootLayout}
+    >
+      {visible &&
+        (spot ? (
+          <>
+            <View pointerEvents="none" style={[styles.dim, { top: 0, left: 0, right: 0, height: spot.y }]} />
+            <View pointerEvents="none" style={[styles.dim, { top: spot.y, left: 0, width: spot.x, height: spot.h }]} />
+            <View pointerEvents="none" style={[styles.dim, { top: spot.y, left: spot.x + spot.w, right: 0, height: spot.h }]} />
+            <View pointerEvents="none" style={[styles.dim, { top: spot.y + spot.h, left: 0, right: 0, bottom: 0 }]} />
             <View
-              key={s.id}
-              style={[
-                styles.stepDot,
-                s.id === currentStep && styles.stepDotActive,
-              ]}
+              pointerEvents="none"
+              style={[styles.spotBorder, { top: spot.y, left: spot.x, width: spot.w, height: spot.h }]}
             />
-          ))}
-          <Text style={styles.stepLabel}>{stepLabel}</Text>
-        </View>
+          </>
+        ) : (
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.dimFill]} />
+        ))}
 
-        <Text style={styles.tooltipTitle}>{currentStepDef?.title}</Text>
-        <Text style={styles.tooltipDesc}>{currentStepDef?.description}</Text>
-
-        {/* Buttons */}
-        <View style={styles.btnRow}>
-          <TouchableOpacity style={styles.skipBtn} onPress={skipTour}>
-            <Text style={styles.skipBtnText}>Saltar tour</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.nextBtn} onPress={nextStep}>
-            <Text style={styles.nextBtnText}>
-              {isLastStep ? "¡Listo! 🎉" : "Siguiente →"}
+      {visible && (
+        <Animated.View
+          onLayout={(e) => setTooltipH(e.nativeEvent.layout.height)}
+          style={[styles.tooltip, { top: tooltipTop, opacity: fade, transform: [{ scale }] }]}
+          accessibilityRole="alert"
+        >
+          <View style={styles.stepRow}>
+            {steps.map((s, i) => (
+              <View key={s.id} style={[styles.dot, i === stepIndex && styles.dotActive]} />
+            ))}
+            <Text style={styles.stepLabel}>
+              Paso {stepIndex + 1} de {total}
             </Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+          </View>
+
+          <Text style={styles.title}>{currentStep.title}</Text>
+          <Text style={styles.desc}>{currentStep.description}</Text>
+
+          <View style={styles.btnRow}>
+            <TouchableOpacity
+              onPress={skipTour}
+              style={styles.ghostBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Saltar tour"
+            >
+              <Text style={styles.ghostText}>Saltar</Text>
+            </TouchableOpacity>
+
+            <View style={styles.btnRight}>
+              {stepIndex > 0 && (
+                <TouchableOpacity onPress={prevStep} style={styles.ghostBtn} accessibilityRole="button">
+                  <Text style={styles.backText}>Atrás</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={nextStep} style={styles.nextBtn} accessibilityRole="button">
+                <Text style={styles.nextText}>{isLast ? "¡Listo!" : "Siguiente"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    position: "absolute",
-    backgroundColor: OVERLAY_COLOR,
-  },
-  spotlightBorder: {
+  dim: { position: "absolute", backgroundColor: OVERLAY_COLOR },
+  dimFill: { backgroundColor: OVERLAY_COLOR },
+  spotBorder: {
     position: "absolute",
     borderWidth: 2.5,
     borderColor: HIGHLIGHT_BORDER,
     borderRadius: 14,
-    // subtle glow via shadow
     shadowColor: HIGHLIGHT_BORDER,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
@@ -239,65 +208,23 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
-  stepRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginBottom: 10,
-  },
-  stepDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#D1D5DB",
-  },
-  stepDotActive: {
-    backgroundColor: "#277855",
-    width: 18,
-  },
-  stepLabel: {
-    fontSize: 11,
-    color: "#9CA3AF",
-    fontWeight: "600",
-    marginLeft: 4,
-  },
-  tooltipTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#0A1C40",
-    marginBottom: 6,
-  },
-  tooltipDesc: {
-    fontSize: 14,
-    color: "#4B5563",
-    lineHeight: 20,
-    marginBottom: 18,
-  },
-  btnRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-  },
-  skipBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  skipBtnText: {
-    fontSize: 14,
-    color: "#9CA3AF",
-    fontWeight: "600",
-  },
+  stepRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 10 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#D1D5DB" },
+  dotActive: { backgroundColor: "#277855", width: 18 },
+  stepLabel: { fontSize: 11, color: "#6B7280", fontWeight: "600", marginLeft: 4 },
+  title: { fontSize: 17, fontWeight: "800", color: "#0A1C40", marginBottom: 6 },
+  desc: { fontSize: 14, color: "#4B5563", lineHeight: 20, marginBottom: 18 },
+  btnRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  btnRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  ghostBtn: { paddingVertical: 10, paddingHorizontal: 12 },
+  ghostText: { fontSize: 14, color: "#6B7280", fontWeight: "600" },
+  backText: { fontSize: 14, color: "#277855", fontWeight: "700" },
   nextBtn: {
-    flex: 1,
     backgroundColor: "#277855",
     paddingVertical: 12,
+    paddingHorizontal: 22,
     borderRadius: 12,
     alignItems: "center",
   },
-  nextBtnText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#FFFFFF",
-  },
+  nextText: { fontSize: 15, fontWeight: "800", color: "#FFFFFF" },
 });

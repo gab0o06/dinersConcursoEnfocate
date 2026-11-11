@@ -8,11 +8,13 @@ import {
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { useEffect } from "react";
-import { Platform, useColorScheme } from "react-native";
+import { Platform, useColorScheme, View } from "react-native";
 
 import "../global.css";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import WebPresentationContainer from "@/components/WebPresentationContainer";
+import TourOverlay from "@/components/tour/TourOverlay";
+import { TourProvider } from "@/contexts/TourContext";
 import { useEcoStore } from "@/store/useEcoStore";
 
 if (Platform.OS !== "web") {
@@ -95,13 +97,19 @@ export default function RootLayout() {
         <style type="text/css">{ICON_FONTS_CSS}</style>
       </Head>
       <AnimatedSplashOverlay />
-      <WebPresentationContainer>
-        {/* El Stack navega directo a los Tabs, sin pantalla de login */}
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </WebPresentationContainer>
+      <TourProvider>
+        <WebPresentationContainer>
+          <View style={{ flex: 1 }}>
+            {/* El Stack navega directo a los Tabs, sin pantalla de login */}
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+            {/* Spotlight del tour: encima de toda la navegación, dentro del marco */}
+            <TourOverlay />
+          </View>
+        </WebPresentationContainer>
+      </TourProvider>
     </ThemeProvider>
   );
 }

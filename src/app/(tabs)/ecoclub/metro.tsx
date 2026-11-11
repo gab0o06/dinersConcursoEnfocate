@@ -13,10 +13,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
 import { ECOCLUB } from "../../../config/ecoclub.config";
 import { useEcoStore } from "../../../store/useEcoStore";
+import { useTourHighlight } from "../../../hooks/useTourHighlight";
 
 export default function MetroDinersScreen() {
   const router = useRouter();
   const [autoRecharge, setAutoRecharge] = useState(true);
+  const autoRechargeTarget = useTourHighlight("metro-auto-recharge-section");
 
   // — Store: transacciones del Metro (MCC 4111) —
   const scoredTransactions = useEcoStore((s) => s.scoredTransactions);
@@ -97,7 +99,8 @@ export default function MetroDinersScreen() {
         </View>
 
         {/* Sección de la Tarjeta */}
-        <View style={styles.cardSection}>
+        {/* Tarjeta + recarga automática (target paso 3 del tour) */}
+        <View style={styles.cardSection} {...autoRechargeTarget}>
           <View style={styles.cardVisual}>
             <View style={styles.cardVisualHeader}>
               <View style={styles.metroBadge}>

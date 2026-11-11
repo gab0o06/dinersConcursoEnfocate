@@ -12,6 +12,7 @@ import { COLORS } from "../../constants/theme";
 import { MOCK_USUARIO } from "../../data/mock/usuario";
 import { getLevelLabel } from "../../lib/levels";
 import { selectValidPoints, useEcoStore } from "../../store/useEcoStore";
+import { useTourHighlight } from "../../hooks/useTourHighlight";
 
 interface MenuItem {
   icon: string;
@@ -19,6 +20,8 @@ interface MenuItem {
   label: string;
   sublabel?: string;
   onPress?: () => void;
+  /** nativeID para el tour guiado */
+  tourId?: string;
 }
 
 interface MenuSection {
@@ -31,6 +34,7 @@ export default function MenuScreen() {
   const validPoints = useEcoStore(selectValidPoints);
   const nivelActual = useEcoStore((s) => s.nivelActual);
   const levelLabel = getLevelLabel(nivelActual);
+  const payWithBluTarget = useTourHighlight("menu-pay-with-blu-option");
 
   const menuSections: MenuSection[] = [
     {
@@ -49,6 +53,7 @@ export default function MenuScreen() {
           label: "Pagar con BLU",
           sublabel: "Aplica tus EcoPoints directo en compras",
           onPress: () => router.push("/(tabs)/ecoclub/pago-blu"),
+          tourId: payWithBluTarget.nativeID,
         },
       ],
     },
@@ -136,6 +141,9 @@ export default function MenuScreen() {
               {sec.items.map((item, itemIdx) => (
                 <TouchableOpacity
                   key={itemIdx}
+                  {...(item.tourId === payWithBluTarget.nativeID
+                    ? payWithBluTarget
+                    : null)}
                   style={[
                     styles.menuRow,
                     itemIdx < sec.items.length - 1 && styles.menuRowBorder,

@@ -20,6 +20,9 @@ export default function EcoGauge({ value, max }: Props) {
   const progressRatio = Math.min(value / max, 1);
   const strokeDashoffset = arcLength - arcLength * progressRatio;
 
+  // Rotación de 135° alrededor del centro del círculo
+  const rotate = `rotate(135 ${size / 2} ${size / 2})`;
+
   return (
     <View
       style={{
@@ -39,8 +42,9 @@ export default function EcoGauge({ value, max }: Props) {
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={`${arcLength} ${circumference}`}
-          rotation={135} // Rotamos para que el hueco quede simétrico abajo
-          origin={`${size / 2}, ${size / 2}`}
+          // Rotamos para que el hueco quede simétrico abajo. Se usa un transform SVG
+          // estándar: rotation/origin generan un atributo inválido en web.
+          transform={rotate}
           fill="transparent"
         />
         {/* Pista de progreso (Verde) */}
@@ -53,8 +57,7 @@ export default function EcoGauge({ value, max }: Props) {
           strokeLinecap="round"
           strokeDasharray={`${arcLength} ${circumference}`}
           strokeDashoffset={circumference - arcLength + strokeDashoffset}
-          rotation={135}
-          origin={`${size / 2}, ${size / 2}`}
+          transform={rotate}
           fill="transparent"
         />
       </Svg>

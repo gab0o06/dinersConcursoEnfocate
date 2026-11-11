@@ -14,6 +14,8 @@ import { ECOCLUB } from "../../config/ecoclub.config";
 import Capa0DescubiertoCard from "../../components/Capa0DescubiertoCard";
 import ChallengesCarousel from "../../components/ChallengesCarousel";
 import SeasonBanner from "../../components/SeasonBanner";
+import { useTour } from "../../contexts/TourContext";
+import { useTourHighlight } from "../../hooks/useTourHighlight";
 import {
   selectAmountToMultiplier,
   selectMultiplierActive,
@@ -34,6 +36,8 @@ export default function HomeScreen() {
   const isRegistered      = useEcoStore((s) => s.isRegistered);
   const registerEcoClub   = useEcoStore((s) => s.registerEcoClub);
   const setRegistered     = useEcoStore((s) => s.setRegistered);
+  const { startTour }     = useTour();
+  const weeklyAchievementTarget = useTourHighlight("home-weekly-achievement");
 
   const metroPoints = scoredTransactions
     .filter((tx) => tx.category === "metro")
@@ -59,6 +63,18 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <Text style={styles.logoText}>blu</Text>
           <View style={styles.headerIcons}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={startTour}
+              accessibilityRole="button"
+              accessibilityLabel="Iniciar tour guiado"
+            >
+              <Ionicons
+                name="help-circle-outline"
+                size={24}
+                color={COLORS.dinersBlue}
+              />
+            </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
               <Ionicons
                 name="notifications-outline"
@@ -156,7 +172,8 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Sección: Tus logros de la semana */}
+        {/* Sección: Tus logros de la semana (target paso 1 del tour) */}
+        <View {...weeklyAchievementTarget}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitleOnly}>Tus logros de la semana</Text>
           <TouchableOpacity
@@ -183,8 +200,7 @@ export default function HomeScreen() {
             isRegistered={false}
           />
         ) : (
-          <>
-            {/* — Tarjeta EcoClub con datos reales — */}
+            /* — Tarjeta EcoClub con datos reales — */
             <View style={styles.ecoCard}>
               {/* Fila 1: EcoPoints totales + multiplicador */}
               <View style={styles.ecoCardHeader}>
@@ -222,11 +238,11 @@ export default function HomeScreen() {
                 onPressReciVeci={() => router.push("/(tabs)/ecoclub/reciveci")}
               />
             </View>
-
-            {/* Banner de Temporada Activa en Home */}
-            <SeasonBanner />
-          </>
         )}
+        </View>
+
+        {/* Banner de Temporada Activa en Home */}
+        {isRegistered && <SeasonBanner />}
 
         {/* Sección: Tus accesos directos */}
         <View style={styles.sectionHeader}>

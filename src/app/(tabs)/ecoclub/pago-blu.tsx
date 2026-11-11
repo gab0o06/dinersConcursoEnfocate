@@ -17,6 +17,7 @@ import {
   POINTS_TO_DOLLARS_RATE,
 } from "../../../services/ecoPointsEngine";
 import { useEcoStore } from "../../../store/useEcoStore";
+import { useTourHighlight } from "../../../hooks/useTourHighlight";
 
 // ---------------------------------------------------------------------------
 // Constantes mock
@@ -55,6 +56,7 @@ export default function PagoBluScreen() {
   // Estado local
   const [applyPoints, setApplyPoints] = useState(false);
   const [paid, setPaid] = useState(false);
+  const discountTarget = useTourHighlight("blu-ecopoints-discount-card");
 
   const discount = applyPoints && canApplyPoints ? maxDiscount : 0;
   const pointsUsed = applyPoints && canApplyPoints ? maxDiscountPoints : 0;
@@ -103,8 +105,8 @@ export default function PagoBluScreen() {
           <Text style={styles.amountNote}>Simulación — valor de ejemplo</Text>
         </View>
 
-        {/* ── Toggle EcoPoints ── */}
-        <View style={styles.toggleCard}>
+        {/* ── Toggle EcoPoints (target paso 5 del tour) ── */}
+        <View style={styles.toggleCard} {...discountTarget}>
           <View style={styles.toggleLeft}>
             <Ionicons name="leaf" size={22} color="#277855" />
             <View style={styles.toggleTexts}>

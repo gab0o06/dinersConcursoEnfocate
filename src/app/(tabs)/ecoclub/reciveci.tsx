@@ -24,6 +24,9 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
   const strokeDashoffset =
     halfCircumference - halfCircumference * progressRatio;
 
+  // Rotación SVG estándar (rotation/origin generan un atributo inválido en web)
+  const rotate = `rotate(180 ${size / 2} ${size / 2})`;
+
   return (
     <View style={styles.gaugeContainer}>
       <Svg width={size} height={size / 2 + strokeWidth / 2}>
@@ -35,8 +38,7 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
           stroke="#FFFFFF"
           strokeWidth={strokeWidth}
           strokeDasharray={`${halfCircumference} ${circumference}`}
-          rotation={180}
-          origin={`${size / 2}, ${size / 2}`}
+          transform={rotate}
           fill="transparent"
         />
         {/* Borde sutil */}
@@ -47,8 +49,7 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
           stroke="#EAEAEA"
           strokeWidth={1}
           strokeDasharray={`${halfCircumference + 3} ${circumference}`}
-          rotation={180}
-          origin={`${size / 2}, ${size / 2}`}
+          transform={rotate}
           fill="transparent"
         />
         {/* Progreso (Verde) */}
@@ -61,8 +62,7 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
           strokeLinecap="butt"
           strokeDasharray={`${halfCircumference} ${circumference}`}
           strokeDashoffset={halfCircumference - strokeDashoffset}
-          rotation={180}
-          origin={`${size / 2}, ${size / 2}`}
+          transform={rotate}
           fill="transparent"
         />
       </Svg>
