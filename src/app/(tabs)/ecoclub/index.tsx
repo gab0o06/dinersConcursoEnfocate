@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 import Capa0DescubiertoCard from "../../../components/Capa0DescubiertoCard";
 import ChallengeCard from "../../../components/ChallengeCard";
 import EcoHeader from "../../../components/EcoHeader";
-import EquivalenceCard from "../../../components/EquivalenceCard";
+import CarbonReductionCard from "../../../components/CarbonReductionCard";
 import PointsHistoryModal from "../../../components/PointsHistoryModal";
 import SeasonBanner from "../../../components/SeasonBanner";
 import ValidationCard from "../../../components/ValidationCard";
@@ -20,13 +20,6 @@ import {
   selectValidPoints,
   useEcoStore,
 } from "../../../store/useEcoStore";
-
-/** Convierte kg de CO₂ evitado a una equivalencia comprensible para el usuario */
-function co2ToEquivalence(co2Kg: number): string {
-  if (co2Kg >= 6) return `plantar ${Math.round(co2Kg / 3)} árboles`;
-  if (co2Kg >= 2) return `ahorrar ${Math.round(co2Kg * 0.5)} litros de gasolina`;
-  return `evitar ${Math.round(co2Kg * 1000)}g de CO₂`;
-}
 
 export default function EcoScreen() {
   const router = useRouter();
@@ -154,7 +147,8 @@ export default function EcoScreen() {
           />
         </View>
 
-        <EquivalenceCard label={co2ToEquivalence(totalCo2Saved)} />
+        {/* CO₂ evitado por MCC con desglose y equivalencia */}
+        <CarbonReductionCard style={styles.carbonCard} />
 
         {/* Indicador de activación del multiplicador (Escenario B) */}
         {!multiplierActive && amountLeft > 0 && (
@@ -283,6 +277,10 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingBottom: 20,
+  },
+  carbonCard: {
+    marginHorizontal: 20, // EcoScreen no tiene padding horizontal
+    marginBottom: 16,
   },
   greetingRow: {
     flexDirection: "row",

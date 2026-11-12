@@ -13,7 +13,7 @@ import { COLORS } from "../../constants/theme";
 import { ECOCLUB } from "../../config/ecoclub.config";
 import Capa0DescubiertoCard from "../../components/Capa0DescubiertoCard";
 import ChallengesCarousel from "../../components/ChallengesCarousel";
-import SeasonBanner from "../../components/SeasonBanner";
+import CarbonReductionCard from "../../components/CarbonReductionCard";
 import { useTour } from "../../contexts/TourContext";
 import { useTourHighlight } from "../../hooks/useTourHighlight";
 import {
@@ -241,8 +241,8 @@ export default function HomeScreen() {
         )}
         </View>
 
-        {/* Banner de Temporada Activa en Home */}
-        {isRegistered && <SeasonBanner />}
+        {/* Indicador de CO₂ evitado por MCC (reemplaza la campaña activa) */}
+        {isRegistered && <CarbonReductionCard />}
 
         {/* Sección: Tus accesos directos */}
         <View style={styles.sectionHeader}>
