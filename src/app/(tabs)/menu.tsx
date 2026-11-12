@@ -1,6 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Fragment } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -10,7 +9,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/theme";
-import CarbonReductionCard from "../../components/CarbonReductionCard";
 import { MOCK_USUARIO } from "../../data/mock/usuario";
 import { getLevelLabel } from "../../lib/levels";
 import { selectValidPoints, useEcoStore } from "../../store/useEcoStore";
@@ -127,11 +125,7 @@ export default function MenuScreen() {
             </Text>
             <Text style={styles.profileEmail}>{MOCK_USUARIO.email}</Text>
             <View style={styles.profileBadge}>
-              <MaterialCommunityIcons
-                name="shield-check"
-                size={14}
-                color="#277855"
-              />
+              <MaterialCommunityIcons name="shield-check" size={14} color="#277855" />
               <Text style={styles.profileBadgeText}>
                 EcoClub {levelLabel} • {validPoints} pts
               </Text>
@@ -141,54 +135,45 @@ export default function MenuScreen() {
 
         {/* Secciones del Menú */}
         {menuSections.map((sec, secIdx) => (
-          <Fragment key={secIdx}>
-            <View style={styles.sectionWrap}>
-              <Text style={styles.sectionHeader}>{sec.title}</Text>
-              <View style={styles.itemsCard}>
-                {sec.items.map((item, itemIdx) => (
-                  <TouchableOpacity
-                    key={itemIdx}
-                    {...(item.tourId === payWithBluTarget.nativeID
-                      ? payWithBluTarget
-                      : null)}
+          <View key={secIdx} style={styles.sectionWrap}>
+            <Text style={styles.sectionHeader}>{sec.title}</Text>
+            <View style={styles.itemsCard}>
+              {sec.items.map((item, itemIdx) => (
+                <TouchableOpacity
+                  key={itemIdx}
+                  {...(item.tourId === payWithBluTarget.nativeID
+                    ? payWithBluTarget
+                    : null)}
+                  style={[
+                    styles.menuRow,
+                    itemIdx < sec.items.length - 1 && styles.menuRowBorder,
+                  ]}
+                  onPress={item.onPress}
+                  activeOpacity={item.onPress ? 0.7 : 1}
+                >
+                  <View
                     style={[
-                      styles.menuRow,
-                      itemIdx < sec.items.length - 1 && styles.menuRowBorder,
+                      styles.iconCircle,
+                      { backgroundColor: `${item.iconColor}15` },
                     ]}
-                    onPress={item.onPress}
-                    activeOpacity={item.onPress ? 0.7 : 1}
                   >
-                    <View
-                      style={[
-                        styles.iconCircle,
-                        { backgroundColor: `${item.iconColor}15` },
-                      ]}
-                    >
-                      <Ionicons
-                        name={item.icon as keyof typeof Ionicons.glyphMap}
-                        size={20}
-                        color={item.iconColor}
-                      />
-                    </View>
-                    <View style={styles.menuTextWrap}>
-                      <Text style={styles.menuLabel}>{item.label}</Text>
-                      {item.sublabel && (
-                        <Text style={styles.menuSublabel}>{item.sublabel}</Text>
-                      )}
-                    </View>
                     <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color="#CCCCCC"
+                      name={item.icon as keyof typeof Ionicons.glyphMap}
+                      size={20}
+                      color={item.iconColor}
                     />
-                  </TouchableOpacity>
-                ))}
-              </View>
+                  </View>
+                  <View style={styles.menuTextWrap}>
+                    <Text style={styles.menuLabel}>{item.label}</Text>
+                    {item.sublabel && (
+                      <Text style={styles.menuSublabel}>{item.sublabel}</Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#CCCCCC" />
+                </TouchableOpacity>
+              ))}
             </View>
-
-            {/* Indicador clave de CO₂ por MCC, tras la sección EcoClub */}
-            {secIdx === 0 && <CarbonReductionCard />}
-          </Fragment>
+          </View>
         ))}
 
         {/* Botón Cerrar Sesión */}
@@ -197,9 +182,7 @@ export default function MenuScreen() {
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>
-          BLU Diners Club • Versión 5.0 EcoClub
-        </Text>
+        <Text style={styles.versionText}>BLU Diners Club • Versión 5.0 EcoClub</Text>
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>

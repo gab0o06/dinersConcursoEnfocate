@@ -6,13 +6,14 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 import Capa0DescubiertoCard from "../../../components/Capa0DescubiertoCard";
 import ChallengeCard from "../../../components/ChallengeCard";
 import EcoHeader from "../../../components/EcoHeader";
-import CarbonReductionCard from "../../../components/CarbonReductionCard";
+import EquivalenceCard from "../../../components/EquivalenceCard";
 import PointsHistoryModal from "../../../components/PointsHistoryModal";
 import SeasonBanner from "../../../components/SeasonBanner";
 import ValidationCard from "../../../components/ValidationCard";
 import { useTourHighlight } from "../../../hooks/useTourHighlight";
 import { ECOCLUB } from "../../../config/ecoclub.config";
 import { MOCK_USUARIO } from "../../../data/mock/usuario";
+import { co2ToEquivalence } from "../../../lib/co2";
 import { getLevelLabel } from "../../../lib/levels";
 import {
   selectAmountToMultiplier,
@@ -137,7 +138,7 @@ export default function EcoScreen() {
         <SeasonBanner />
 
         {/* Gauge de CO2 y Validación Diners (target paso 2 del tour) */}
-        <View {...validationTarget}>
+        <View {...validationTarget} style={styles.validationWrap}>
           <ValidationCard
             co2Value={totalCo2Saved}
             co2Max={co2Max}
@@ -147,8 +148,7 @@ export default function EcoScreen() {
           />
         </View>
 
-        {/* CO₂ evitado por MCC con desglose y equivalencia */}
-        <CarbonReductionCard style={styles.carbonCard} />
+        <EquivalenceCard label={co2ToEquivalence(totalCo2Saved)} />
 
         {/* Indicador de activación del multiplicador (Escenario B) */}
         {!multiplierActive && amountLeft > 0 && (
@@ -278,9 +278,8 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: 20,
   },
-  carbonCard: {
-    marginHorizontal: 20, // EcoScreen no tiene padding horizontal
-    marginBottom: 16,
+  validationWrap: {
+    marginHorizontal: 20, // margen fuera del target: el spotlight se ajusta a la tarjeta
   },
   greetingRow: {
     flexDirection: "row",
