@@ -16,6 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import EcoHeader from "../../../components/EcoHeader";
 import { ECOCLUB } from "../../../config/ecoclub.config";
 import { useEcoStore } from "../../../store/useEcoStore";
+import { useTourHighlight } from "../../../hooks/useTourHighlight";
+import { useTourScroll } from "../../../hooks/useTourScroll";
 
 // OBLIGATORIO: Cierra el navegador al recibir la respuesta de Strava
 WebBrowser.maybeCompleteAuthSession();
@@ -40,6 +42,8 @@ interface StravaActivity {
 
 export default function KmVerdesScreen() {
   const router = useRouter();
+  const stravaTarget = useTourHighlight("strava-connection-section");
+  const tourScroll = useTourScroll();
 
   // — Store —
   const addStravaPoints   = useEcoStore((s) => s.addStravaPoints);
@@ -196,6 +200,7 @@ export default function KmVerdesScreen() {
       />
 
       <ScrollView
+        {...tourScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
@@ -217,8 +222,10 @@ export default function KmVerdesScreen() {
           )}
         </View>
 
+        {/* Conexión / sincronización con Strava (target paso 4 del tour):
+            solo uno de los dos bloques está montado, ambos comparten el target */}
         {!accessToken ? (
-          <View style={styles.loginContainer}>
+          <View style={styles.loginContainer} {...stravaTarget}>
             <Ionicons
               name="fitness-outline"
               size={60}
@@ -240,7 +247,7 @@ export default function KmVerdesScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.statsContainer}>
+            <View style={styles.statsContainer} {...stravaTarget}>
               {isLoading ? (
                 <ActivityIndicator
                   size="large"

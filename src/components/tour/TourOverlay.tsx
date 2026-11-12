@@ -41,7 +41,7 @@ export default function TourOverlay() {
     nextStep,
     prevStep,
     skipTour,
-    remeasure,
+    recalculateSpotlight,
   } = useTour();
 
   const rootRef = useRef<View>(null);
@@ -56,8 +56,16 @@ export default function TourOverlay() {
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(fade, { toValue: 1, duration: 260, useNativeDriver: true }),
-        Animated.spring(scale, { toValue: 1, friction: 7, useNativeDriver: true }),
+        Animated.timing(fade, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 7,
+          useNativeDriver: true,
+        }),
       ]).start();
     } else {
       fade.setValue(0);
@@ -70,9 +78,9 @@ export default function TourOverlay() {
       const { width, height } = e.nativeEvent.layout;
       setSize({ width, height });
       rootRef.current?.measureInWindow((x, y) => setOrigin({ x, y }));
-      remeasure();
+      recalculateSpotlight();
     },
-    [remeasure],
+    [recalculateSpotlight],
   );
 
   if (!isActive || !currentStep || stepIndex === null) return null;
@@ -81,17 +89,23 @@ export default function TourOverlay() {
   const H = size.height;
   const pad = currentStep.padding ?? DEFAULT_PADDING;
 
+  // Rectángulo del target en coordenadas locales, recortado al overlay.
+  // Durante el scroll el target puede quedar parcial o totalmente fuera.
   const spot =
     visible && targetLayout
       ? (() => {
-          const x = Math.max(0, targetLayout.x - origin.x - pad);
-          const y = Math.max(0, targetLayout.y - origin.y - pad);
-          return {
-            x,
-            y,
-            w: Math.min(W - x, targetLayout.width + pad * 2),
-            h: Math.min(H - y, targetLayout.height + pad * 2),
-          };
+          const left = Math.max(0, targetLayout.x - origin.x - pad);
+          const top = Math.max(0, targetLayout.y - origin.y - pad);
+          const right = Math.min(
+            W,
+            targetLayout.x - origin.x + targetLayout.width + pad,
+          );
+          const bottom = Math.min(
+            H,
+            targetLayout.y - origin.y + targetLayout.height + pad,
+          );
+          if (right <= left || bottom <= top) return null; // fuera de pantalla
+          return { x: left, y: top, w: right - left, h: bottom - top };
         })()
       : null;
 
@@ -114,37 +128,71 @@ export default function TourOverlay() {
   const isLast = stepIndex === total - 1;
 
   return (
+    // box-none: el overlay deja pasar toques y scroll a la pantalla de abajo;
+    // solo el tooltip los captura.
     <View
       ref={rootRef}
-      style={StyleSheet.absoluteFill}
-      pointerEvents="box-none"
+      style={[StyleSheet.absoluteFill, styles.passThrough]}
       onLayout={onRootLayout}
     >
       {visible &&
         (spot ? (
           <>
-            <View pointerEvents="none" style={[styles.dim, { top: 0, left: 0, right: 0, height: spot.y }]} />
-            <View pointerEvents="none" style={[styles.dim, { top: spot.y, left: 0, width: spot.x, height: spot.h }]} />
-            <View pointerEvents="none" style={[styles.dim, { top: spot.y, left: spot.x + spot.w, right: 0, height: spot.h }]} />
-            <View pointerEvents="none" style={[styles.dim, { top: spot.y + spot.h, left: 0, right: 0, bottom: 0 }]} />
             <View
-              pointerEvents="none"
-              style={[styles.spotBorder, { top: spot.y, left: spot.x, width: spot.w, height: spot.h }]}
+              style={[
+                styles.dim,
+                { top: 0, left: 0, right: 0, height: spot.y },
+              ]}
+            />
+            <View
+              style={[
+                styles.dim,
+                { top: spot.y, left: 0, width: spot.x, height: spot.h },
+              ]}
+            />
+            <View
+              style={[
+                styles.dim,
+                {
+                  top: spot.y,
+                  left: spot.x + spot.w,
+                  right: 0,
+                  height: spot.h,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.dim,
+                { top: spot.y + spot.h, left: 0, right: 0, bottom: 0 },
+              ]}
+            />
+            <View
+              style={[
+                styles.spotBorder,
+                { top: spot.y, left: spot.x, width: spot.w, height: spot.h },
+              ]}
             />
           </>
         ) : (
-          <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.dimFill]} />
+          <View style={[StyleSheet.absoluteFill, styles.dim]} />
         ))}
 
       {visible && (
         <Animated.View
           onLayout={(e) => setTooltipH(e.nativeEvent.layout.height)}
-          style={[styles.tooltip, { top: tooltipTop, opacity: fade, transform: [{ scale }] }]}
+          style={[
+            styles.tooltip,
+            { top: tooltipTop, opacity: fade, transform: [{ scale }] },
+          ]}
           accessibilityRole="alert"
         >
           <View style={styles.stepRow}>
             {steps.map((s, i) => (
-              <View key={s.id} style={[styles.dot, i === stepIndex && styles.dotActive]} />
+              <View
+                key={s.id}
+                style={[styles.dot, i === stepIndex && styles.dotActive]}
+              />
             ))}
             <Text style={styles.stepLabel}>
               Paso {stepIndex + 1} de {total}
@@ -166,12 +214,22 @@ export default function TourOverlay() {
 
             <View style={styles.btnRight}>
               {stepIndex > 0 && (
-                <TouchableOpacity onPress={prevStep} style={styles.ghostBtn} accessibilityRole="button">
+                <TouchableOpacity
+                  onPress={prevStep}
+                  style={styles.ghostBtn}
+                  accessibilityRole="button"
+                >
                   <Text style={styles.backText}>Atrás</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={nextStep} style={styles.nextBtn} accessibilityRole="button">
-                <Text style={styles.nextText}>{isLast ? "¡Listo!" : "Siguiente"}</Text>
+              <TouchableOpacity
+                onPress={nextStep}
+                style={styles.nextBtn}
+                accessibilityRole="button"
+              >
+                <Text style={styles.nextText}>
+                  {isLast ? "¡Listo!" : "Siguiente"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -182,10 +240,16 @@ export default function TourOverlay() {
 }
 
 const styles = StyleSheet.create({
-  dim: { position: "absolute", backgroundColor: OVERLAY_COLOR },
-  dimFill: { backgroundColor: OVERLAY_COLOR },
+  passThrough: { pointerEvents: "box-none" },
+  // Capas oscuras: no capturan toques ni rueda/scroll (pasan a la pantalla)
+  dim: {
+    position: "absolute",
+    backgroundColor: OVERLAY_COLOR,
+    pointerEvents: "none",
+  },
   spotBorder: {
     position: "absolute",
+    pointerEvents: "none",
     borderWidth: 2.5,
     borderColor: HIGHLIGHT_BORDER,
     borderRadius: 14,
@@ -208,13 +272,27 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
-  stepRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 10 },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 10,
+  },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#D1D5DB" },
   dotActive: { backgroundColor: "#277855", width: 18 },
-  stepLabel: { fontSize: 11, color: "#6B7280", fontWeight: "600", marginLeft: 4 },
+  stepLabel: {
+    fontSize: 11,
+    color: "#6B7280",
+    fontWeight: "600",
+    marginLeft: 4,
+  },
   title: { fontSize: 17, fontWeight: "800", color: "#0A1C40", marginBottom: 6 },
   desc: { fontSize: 14, color: "#4B5563", lineHeight: 20, marginBottom: 18 },
-  btnRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  btnRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   btnRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   ghostBtn: { paddingVertical: 10, paddingHorizontal: 12 },
   ghostText: { fontSize: 14, color: "#6B7280", fontWeight: "600" },

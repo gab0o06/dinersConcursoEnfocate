@@ -13,6 +13,7 @@ import { MOCK_USUARIO } from "../../data/mock/usuario";
 import { getLevelLabel } from "../../lib/levels";
 import { selectValidPoints, useEcoStore } from "../../store/useEcoStore";
 import { useTourHighlight } from "../../hooks/useTourHighlight";
+import { useTourScroll } from "../../hooks/useTourScroll";
 
 interface MenuItem {
   icon: string;
@@ -35,6 +36,7 @@ export default function MenuScreen() {
   const nivelActual = useEcoStore((s) => s.nivelActual);
   const levelLabel = getLevelLabel(nivelActual);
   const payWithBluTarget = useTourHighlight("menu-pay-with-blu-option");
+  const tourScroll = useTourScroll();
 
   const menuSections: MenuSection[] = [
     {
@@ -108,6 +110,7 @@ export default function MenuScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
+        {...tourScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >

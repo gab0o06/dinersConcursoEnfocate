@@ -1,18 +1,23 @@
 /**
- * TourContext — Controlador del tour guiado interactivo de EcoClub (5 pasos).
+ * TourContext — Controlador del tour guiado interactivo de EcoClub.
  *
  * Flujo de cada paso:
  *   1. goToStep(i) → status = "navigating", se invoca onStepChange(step)
  *      (por defecto cambia de pestaña / navega con Expo Router).
  *   2. Un efecto observa usePathname(): cuando coincide con la ruta del paso,
- *      espera a que termine la animación de transición y mide el target.
+ *      espera a que termine la animación de transición y mide el target hasta
+ *      obtener DOS mediciones iguales seguidas (layout estabilizado).
  *   3. Con el layout medido → status = "showing" y TourOverlay pinta el spotlight.
  *
- * Sincronización con la navegación:
- *   - Si el usuario sale de la pantalla del paso durante el tour, el spotlight
- *     se oculta (el tooltip queda centrado para poder continuar o saltar) y se
- *     vuelve a medir automáticamente al regresar.
- *   - skipTour() cancela cualquier medición/timeout pendiente: nunca bloquea la UI.
+ * Seguimiento en vivo:
+ *   - recalculateSpotlight() vuelve a medir el target activo, como mucho una vez
+ *     por frame (requestAnimationFrame). Lo disparan el scroll de las pantallas
+ *     (useTourScroll), sus cambios de layout y el propio overlay.
+ *
+ * Dos contextos para no re-renderizar pantallas en cada frame de scroll:
+ *   - TourActionsContext: estable (registro de targets, scroll, startTour).
+ *     Lo consumen las pantallas vía useTourHighlight / useTourScroll / useTourActions.
+ *   - TourStateContext: cambia con el spotlight. Solo lo consume el overlay (useTour).
  */
 
 import React, {
@@ -48,7 +53,17 @@ export interface TargetLayout {
 
 export type TourStatus = "idle" | "navigating" | "measuring" | "showing";
 
-export interface TourContextValue {
+export interface TourActions {
+  startTour: () => void;
+  registerTarget: (id: string, ref: RefObject<View | null>) => void;
+  unregisterTarget: (id: string, ref: RefObject<View | null>) => void;
+  /** Re-mide el target activo (throttled a 1 vez por frame). Barato si no hay tour. */
+  recalculateSpotlight: () => void;
+  /** Marca el tour como completado si está activo (no-op si ya terminó) */
+  endTour: () => void;
+}
+
+export interface TourContextValue extends TourActions {
   steps: TourStep[];
   /** Índice 0-based del paso actual. null = tour inactivo */
   stepIndex: number | null;
@@ -58,16 +73,11 @@ export interface TourContextValue {
   targetLayout: TargetLayout | null;
   isActive: boolean;
 
-  startTour: () => void;
   nextStep: () => void;
   prevStep: () => void;
   goToStep: (index: number) => void;
   /** Finaliza el tour en cualquier momento */
   skipTour: () => void;
-
-  registerTarget: (id: string, ref: RefObject<View | null>) => void;
-  unregisterTarget: (id: string, ref: RefObject<View | null>) => void;
-  remeasure: () => void;
 }
 
 export interface TourProviderProps {
@@ -94,18 +104,38 @@ export interface TourProviderProps {
 const TRANSITION_SETTLE_MS = 380;
 /** Si la ruta nunca coincide (p.ej. ruta renombrada), medir igualmente */
 const NAVIGATION_TIMEOUT_MS = 2000;
-const MEASURE_RETRIES = 10;
-const MEASURE_RETRY_DELAY_MS = 120;
+const MEASURE_RETRIES = 12;
+const MEASURE_RETRY_DELAY_MS = 90;
+/** Tolerancia (px) para considerar dos mediciones iguales */
+const LAYOUT_EPSILON = 0.5;
+
+const sameLayout = (a: TargetLayout | null, b: TargetLayout | null) =>
+  !!a &&
+  !!b &&
+  Math.abs(a.x - b.x) < LAYOUT_EPSILON &&
+  Math.abs(a.y - b.y) < LAYOUT_EPSILON &&
+  Math.abs(a.width - b.width) < LAYOUT_EPSILON &&
+  Math.abs(a.height - b.height) < LAYOUT_EPSILON;
 
 // ---------------------------------------------------------------------------
-// Context
+// Contextos y hooks
 // ---------------------------------------------------------------------------
 
-const TourContext = createContext<TourContextValue | null>(null);
+const TourActionsContext = createContext<TourActions | null>(null);
+const TourStateContext = createContext<TourContextValue | null>(null);
 
+/** Estado completo del tour (re-renderiza con cada movimiento del spotlight). */
 export function useTour(): TourContextValue {
-  const ctx = useContext(TourContext);
+  const ctx = useContext(TourStateContext);
   if (!ctx) throw new Error("useTour must be used inside <TourProvider>");
+  return ctx;
+}
+
+/** Acciones estables del tour: no provocan re-render al mover el spotlight. */
+export function useTourActions(): TourActions {
+  const ctx = useContext(TourActionsContext);
+  if (!ctx)
+    throw new Error("useTourActions must be used inside <TourProvider>");
   return ctx;
 }
 
@@ -134,6 +164,11 @@ export function TourProvider({
   const runId = useRef(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  /** Target que el seguimiento en vivo debe medir (null = no seguir) */
+  const liveTargetId = useRef<string | null>(null);
+  const rafId = useRef<number | null>(null);
+  const lastLayout = useRef<TargetLayout | null>(null);
+
   const currentStep = stepIndex !== null ? (steps[stepIndex] ?? null) : null;
 
   // ── Timers ────────────────────────────────────────────────────────────────
@@ -141,6 +176,10 @@ export function TourProvider({
   const clearTimers = useCallback(() => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
   }, []);
 
   const schedule = useCallback((fn: () => void, ms: number) => {
@@ -149,6 +188,19 @@ export function TourProvider({
   }, []);
 
   useEffect(() => clearTimers, [clearTimers]);
+
+  /** Actualiza el layout solo si cambió (evita renders inútiles del overlay) */
+  const commitLayout = useCallback((layout: TargetLayout | null) => {
+    if (
+      layout === null
+        ? lastLayout.current === null
+        : sameLayout(layout, lastLayout.current)
+    ) {
+      return;
+    }
+    lastLayout.current = layout;
+    setTargetLayout(layout);
+  }, []);
 
   // ── Registro de targets ───────────────────────────────────────────────────
 
@@ -167,10 +219,12 @@ export function TourProvider({
     [],
   );
 
-  // ── Medición ──────────────────────────────────────────────────────────────
+  // ── Medición inicial (espera a que el layout se estabilice) ───────────────
 
   const measure = useCallback(
     (targetId: string, token: number) => {
+      let previous: TargetLayout | null = null;
+
       const attempt = (retriesLeft: number): void => {
         if (token !== runId.current) return;
 
@@ -178,8 +232,9 @@ export function TourProvider({
           if (retriesLeft > 0) {
             schedule(() => attempt(retriesLeft - 1), MEASURE_RETRY_DELAY_MS);
           } else {
-            // El target no apareció: mostramos el tooltip sin spotlight
-            setTargetLayout(null);
+            // Se agotó la espera: usar la última medición válida, o tooltip sin spotlight
+            liveTargetId.current = previous ? targetId : null;
+            commitLayout(previous);
             setStatus("showing");
           }
         };
@@ -190,27 +245,66 @@ export function TourProvider({
         node.measureInWindow((x, y, width, height) => {
           if (token !== runId.current) return;
           if (!width || !height) return retry();
-          setTargetLayout({ x, y, width, height });
+
+          const layout = { x, y, width, height };
+          if (!sameLayout(layout, previous)) {
+            // Aún se está moviendo (animación / contenido cargando): medir otra vez
+            previous = layout;
+            return retry();
+          }
+          liveTargetId.current = targetId;
+          commitLayout(layout);
           setStatus("showing");
         });
       };
       attempt(MEASURE_RETRIES);
     },
-    [schedule],
+    [schedule, commitLayout],
   );
+
+  // ── Seguimiento en vivo (scroll / layout) ─────────────────────────────────
+
+  const recalculateSpotlight = useCallback(() => {
+    if (liveTargetId.current === null || rafId.current !== null) return;
+
+    rafId.current = requestAnimationFrame(() => {
+      rafId.current = null;
+      const id = liveTargetId.current;
+      const node = id ? targets.current.get(id)?.current : null;
+      if (!node) return;
+      const token = runId.current;
+      node.measureInWindow((x, y, width, height) => {
+        if (token !== runId.current || liveTargetId.current !== id) return;
+        if (!width || !height) return;
+        commitLayout({ x, y, width, height });
+      });
+    });
+  }, [commitLayout]);
 
   // ── Navegación entre pasos ────────────────────────────────────────────────
 
+  const resetMeasurement = useCallback(() => {
+    runId.current += 1;
+    clearTimers();
+    liveTargetId.current = null;
+    lastLayout.current = null;
+    setTargetLayout(null);
+  }, [clearTimers]);
+
+  /** ¿Ya se disparó (o se canceló) el auto-inicio de este arranque? */
+  const autoStarted = useRef(false);
+  /** ¿Hay un tour en curso? (ref para que endTour sea estable) */
+  const activeRef = useRef(false);
+
   const finish = useCallback(
     (completed: boolean) => {
-      runId.current += 1;
-      clearTimers();
+      activeRef.current = false;
+      resetMeasurement();
       setStepIndex(null);
       setStatus("idle");
-      setTargetLayout(null);
       onFinish?.(completed);
     },
-    [clearTimers, onFinish],
+    [resetMeasurement, onFinish],
   );
 
   const goToStep = useCallback(
@@ -218,9 +312,8 @@ export function TourProvider({
       const step = steps[index];
       if (!step) return;
 
-      runId.current += 1;
-      clearTimers();
-      setTargetLayout(null);
+      activeRef.current = true;
+      resetMeasurement();
       setStepIndex(index);
       setStatus("navigating");
 
@@ -228,14 +321,17 @@ export function TourProvider({
       if (onStepChange) onStepChange(step, index);
       else navigateToTourStep(router, step);
     },
-    [steps, clearTimers, onStepChange, router],
+    [steps, resetMeasurement, onStepChange, router],
   );
 
   const startTour = useCallback(() => goToStep(0), [goToStep]);
 
-  // ── Auto-inicio al abrir la app ───────────────────────────────────────────
+  const endTour = useCallback(() => {
+    autoStarted.current = true; // evita que un auto-inicio pendiente lo relance
+    if (activeRef.current) finish(true);
+  }, [finish]);
 
-  const autoStarted = useRef(false);
+  // ── Auto-inicio al abrir la app ───────────────────────────────────────────
 
   useEffect(() => {
     if (!autoStart || autoStarted.current) return;
@@ -291,60 +387,70 @@ export function TourProvider({
       );
     } else if (status === "showing" && onExpectedRoute && !prevOnRoute) {
       // El usuario volvió a la pantalla del paso: re-medir el target
-      timer = setTimeout(
-        () => measure(currentStep.targetId, token),
-        TRANSITION_SETTLE_MS,
-      );
+      liveTargetId.current = currentStep.targetId;
+      timer = setTimeout(recalculateSpotlight, TRANSITION_SETTLE_MS);
     }
 
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [currentStep, status, onExpectedRoute, measure]);
+  }, [currentStep, status, onExpectedRoute, measure, recalculateSpotlight]);
 
   /** Fuera de la pantalla del paso no hay spotlight (solo tooltip centrado) */
   const visibleLayout = onExpectedRoute ? targetLayout : null;
 
-  const remeasure = useCallback(() => {
-    if (!currentStep || !onExpectedRoute) return;
-    measure(currentStep.targetId, runId.current);
-  }, [currentStep, onExpectedRoute, measure]);
+  // ── Values ────────────────────────────────────────────────────────────────
 
-  // ── Value ─────────────────────────────────────────────────────────────────
-
-  const value = useMemo<TourContextValue>(
+  const actions = useMemo<TourActions>(
     () => ({
+      startTour,
+      registerTarget,
+      unregisterTarget,
+      recalculateSpotlight,
+      endTour,
+    }),
+    [
+      startTour,
+      registerTarget,
+      unregisterTarget,
+      recalculateSpotlight,
+      endTour,
+    ],
+  );
+
+  const state = useMemo<TourContextValue>(
+    () => ({
+      ...actions,
       steps,
       stepIndex,
       currentStep,
       status,
       targetLayout: visibleLayout,
       isActive: stepIndex !== null,
-      startTour,
       nextStep,
       prevStep,
       goToStep,
       skipTour,
-      registerTarget,
-      unregisterTarget,
-      remeasure,
     }),
     [
+      actions,
       steps,
       stepIndex,
       currentStep,
       status,
       visibleLayout,
-      startTour,
       nextStep,
       prevStep,
       goToStep,
       skipTour,
-      registerTarget,
-      unregisterTarget,
-      remeasure,
     ],
   );
 
-  return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
+  return (
+    <TourActionsContext.Provider value={actions}>
+      <TourStateContext.Provider value={state}>
+        {children}
+      </TourStateContext.Provider>
+    </TourActionsContext.Provider>
+  );
 }

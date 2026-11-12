@@ -14,8 +14,9 @@ import { ECOCLUB } from "../../config/ecoclub.config";
 import Capa0DescubiertoCard from "../../components/Capa0DescubiertoCard";
 import ChallengesCarousel from "../../components/ChallengesCarousel";
 import CarbonReductionCard from "../../components/CarbonReductionCard";
-import { useTour } from "../../contexts/TourContext";
+import { useTourActions } from "../../contexts/TourContext";
 import { useTourHighlight } from "../../hooks/useTourHighlight";
+import { useTourScroll } from "../../hooks/useTourScroll";
 import {
   selectAmountToMultiplier,
   selectMultiplierActive,
@@ -36,7 +37,8 @@ export default function HomeScreen() {
   const isRegistered      = useEcoStore((s) => s.isRegistered);
   const registerEcoClub   = useEcoStore((s) => s.registerEcoClub);
   const setRegistered     = useEcoStore((s) => s.setRegistered);
-  const { startTour }     = useTour();
+  const { startTour }     = useTourActions();
+  const tourScroll        = useTourScroll();
   const weeklyAchievementTarget = useTourHighlight("home-weekly-achievement");
 
   const metroPoints = scoredTransactions
@@ -56,6 +58,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
+        {...tourScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >

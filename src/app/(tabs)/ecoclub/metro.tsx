@@ -14,11 +14,13 @@ import EcoHeader from "../../../components/EcoHeader";
 import { ECOCLUB } from "../../../config/ecoclub.config";
 import { useEcoStore } from "../../../store/useEcoStore";
 import { useTourHighlight } from "../../../hooks/useTourHighlight";
+import { useTourScroll } from "../../../hooks/useTourScroll";
 
 export default function MetroDinersScreen() {
   const router = useRouter();
   const [autoRecharge, setAutoRecharge] = useState(true);
   const autoRechargeTarget = useTourHighlight("metro-auto-recharge-section");
+  const tourScroll = useTourScroll();
 
   // — Store: transacciones del Metro (MCC 4111) —
   const scoredTransactions = useEcoStore((s) => s.scoredTransactions);
@@ -68,6 +70,7 @@ export default function MetroDinersScreen() {
       />
 
       <ScrollView
+        {...tourScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >

@@ -11,6 +11,7 @@ import PointsHistoryModal from "../../../components/PointsHistoryModal";
 import SeasonBanner from "../../../components/SeasonBanner";
 import ValidationCard from "../../../components/ValidationCard";
 import { useTourHighlight } from "../../../hooks/useTourHighlight";
+import { useTourScroll } from "../../../hooks/useTourScroll";
 import { ECOCLUB } from "../../../config/ecoclub.config";
 import { MOCK_USUARIO } from "../../../data/mock/usuario";
 import { co2ToEquivalence } from "../../../lib/co2";
@@ -26,6 +27,7 @@ export default function EcoScreen() {
   const router = useRouter();
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const validationTarget = useTourHighlight("ecoclub-environmental-validation");
+  const tourScroll = useTourScroll();
 
   // — Datos del store —
   const validPoints      = useEcoStore(selectValidPoints);
@@ -50,6 +52,7 @@ export default function EcoScreen() {
       <EcoHeader />
 
       <ScrollView
+        {...tourScroll}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
@@ -135,7 +138,7 @@ export default function EcoScreen() {
         ) : null}
 
         {/* Banner de Temporada Activa (Verano Verde 2026) */}
-        <SeasonBanner />
+        <SeasonBanner variant="compact" />
 
         {/* Gauge de CO2 y Validación Diners (target paso 2 del tour) */}
         <View {...validationTarget} style={styles.validationWrap}>

@@ -126,6 +126,13 @@ interface EcoActions {
 
   /** Recalcula todo (útil al volver al foreground) */
   recalculate: () => void;
+
+  /**
+   * Registra una compra nueva (p.ej. pago BLU confirmado) y recalcula CO₂, COI
+   * y resumen financiero. No crea un batch de puntos MCC nuevo, para no
+   * duplicar los EcoPoints ya otorgados por processTransactions.
+   */
+  addPurchase: (tx: RawTransaction) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +289,8 @@ export const useEcoStore = create<EcoState & EcoActions>()(
 
       // -----------------------------------------------------------------------
       redeemPoints: (optionId) => {
-        const { redeemOptions, pointsBatches, financials, canjeadoEsteMes } = get();
+        const { redeemOptions, pointsBatches, financials, canjeadoEsteMes } =
+          get();
         const normalizedId =
           optionId === "basico"
             ? "eco-cashback"
@@ -344,8 +352,20 @@ export const useEcoStore = create<EcoState & EcoActions>()(
       },
 
       // -----------------------------------------------------------------------
+      addPurchase: (tx) => {
+        set({ rawTransactions: [...get().rawTransactions, tx] });
+        get().recalculate();
+      },
+
+      // -----------------------------------------------------------------------
       recalculate: () => {
-        const { rawTransactions, pointsBatches, nivelActual, canjeadoEsteMes, isRegistered } = get();
+        const {
+          rawTransactions,
+          pointsBatches,
+          nivelActual,
+          canjeadoEsteMes,
+          isRegistered,
+        } = get();
         if (rawTransactions.length === 0) return;
 
         const effectiveNivel = isRegistered ? nivelActual : "descubierto";
@@ -365,7 +385,13 @@ export const useEcoStore = create<EcoState & EcoActions>()(
           canjeadoEsteMes,
         );
 
-        set({ scoredTransactions: scored, financials, coiScore, totalCo2Saved, redeemOptions });
+        set({
+          scoredTransactions: scored,
+          financials,
+          coiScore,
+          totalCo2Saved,
+          redeemOptions,
+        });
       },
     }),
 

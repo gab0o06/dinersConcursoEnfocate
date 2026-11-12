@@ -16,8 +16,11 @@ import {
   MIN_REDEEM_POINTS,
   POINTS_TO_DOLLARS_RATE,
 } from "../../../services/ecoPointsEngine";
+import { getRuleForMcc } from "../../../services/mccScoring";
 import { useEcoStore } from "../../../store/useEcoStore";
+import { useTourActions } from "../../../contexts/TourContext";
 import { useTourHighlight } from "../../../hooks/useTourHighlight";
+import { useTourScroll } from "../../../hooks/useTourScroll";
 
 // ---------------------------------------------------------------------------
 // Constantes mock
@@ -26,6 +29,13 @@ import { useTourHighlight } from "../../../hooks/useTourHighlight";
 const MOCK_PURCHASE_AMOUNT = 45.0;
 const MOCK_MERCHANT = "Supermaxi Las Orquídeas";
 const MOCK_MERCHANT_CATEGORY = "Supermercado • Eco-Aliado";
+/** MCC 5411 (Supermercado): define el CO₂ evitado que suma esta compra */
+const MOCK_MERCHANT_MCC = 5411;
+const MOCK_PURCHASE_CO2_KG = parseFloat(
+  (
+    MOCK_PURCHASE_AMOUNT * getRuleForMcc(MOCK_MERCHANT_MCC).co2SavedKgPerDollar
+  ).toFixed(2),
+);
 
 // ---------------------------------------------------------------------------
 // Pantalla principal
@@ -33,8 +43,10 @@ const MOCK_MERCHANT_CATEGORY = "Supermercado • Eco-Aliado";
 
 export default function PagoBluScreen() {
   const router = useRouter();
+  const { endTour } = useTourActions();
 
   // Store
+  const addPurchase = useEcoStore((s) => s.addPurchase);
   const pointsBatches = useEcoStore((s) => s.pointsBatches);
   const financials = useEcoStore((s) => s.financials);
 
@@ -51,23 +63,50 @@ export default function PagoBluScreen() {
     maxApplicablePoints,
     Math.floor(MOCK_PURCHASE_AMOUNT / POINTS_TO_DOLLARS_RATE), // no puede superar el monto de compra
   );
-  const maxDiscount = parseFloat((maxDiscountPoints * POINTS_TO_DOLLARS_RATE).toFixed(2));
+  const maxDiscount = parseFloat(
+    (maxDiscountPoints * POINTS_TO_DOLLARS_RATE).toFixed(2),
+  );
 
   // Estado local
   const [applyPoints, setApplyPoints] = useState(false);
   const [paid, setPaid] = useState(false);
   const discountTarget = useTourHighlight("blu-ecopoints-discount-card");
+  const tourScroll = useTourScroll();
 
   const discount = applyPoints && canApplyPoints ? maxDiscount : 0;
   const pointsUsed = applyPoints && canApplyPoints ? maxDiscountPoints : 0;
   const total = parseFloat((MOCK_PURCHASE_AMOUNT - discount).toFixed(2));
 
   const handlePay = () => {
+    // Registrar la compra en el store: recalcula el CO₂ evitado (MCC 5411)
+    // y persiste, así Home y EcoClub muestran el aumento al instante.
+    addPurchase({
+      id: `blu-${Date.now()}`,
+      date: new Date(),
+      merchant: MOCK_MERCHANT,
+      mcc: MOCK_MERCHANT_MCC,
+      amount: MOCK_PURCHASE_AMOUNT,
+      city: "Quito",
+    });
     setPaid(true);
   };
 
+  /** Cierra el tour y reinicia el stack de EcoClub sin historial hacia atrás */
+  const backToEcoClub = () => {
+    endTour();
+    if (router.canDismiss()) router.dismissAll();
+    router.replace("/(tabs)/ecoclub");
+  };
+
   if (paid) {
-    return <PaymentSuccess router={router} total={total} pointsUsed={pointsUsed} />;
+    return (
+      <PaymentSuccess
+        total={total}
+        pointsUsed={pointsUsed}
+        co2Kg={MOCK_PURCHASE_CO2_KG}
+        onBack={backToEcoClub}
+      />
+    );
   }
 
   return (
@@ -84,24 +123,33 @@ export default function PagoBluScreen() {
       </View>
 
       <ScrollView
+        {...tourScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
         {/* ── Comercio ── */}
         <View style={styles.merchantCard}>
           <View style={styles.merchantIconWrap}>
-            <Ionicons name="storefront-outline" size={28} color={COLORS.dinersBlue} />
+            <Ionicons
+              name="storefront-outline"
+              size={28}
+              color={COLORS.dinersBlue}
+            />
           </View>
           <View>
             <Text style={styles.merchantName}>{MOCK_MERCHANT}</Text>
-            <Text style={styles.merchantCategory}>{MOCK_MERCHANT_CATEGORY}</Text>
+            <Text style={styles.merchantCategory}>
+              {MOCK_MERCHANT_CATEGORY}
+            </Text>
           </View>
         </View>
 
         {/* ── Monto de compra ── */}
         <View style={styles.amountCard}>
           <Text style={styles.amountLabel}>Monto de compra</Text>
-          <Text style={styles.amountValue}>${MOCK_PURCHASE_AMOUNT.toFixed(2)}</Text>
+          <Text style={styles.amountValue}>
+            ${MOCK_PURCHASE_AMOUNT.toFixed(2)}
+          </Text>
           <Text style={styles.amountNote}>Simulación — valor de ejemplo</Text>
         </View>
 
@@ -140,7 +188,8 @@ export default function PagoBluScreen() {
               <View style={styles.discountRight}>
                 <Ionicons name="leaf" size={13} color="#277855" />
                 <Text style={[styles.discountValue, { color: "#277855" }]}>
-                  {" "}{pointsUsed.toLocaleString()} pts
+                  {" "}
+                  {pointsUsed.toLocaleString()} pts
                 </Text>
               </View>
             </View>
@@ -163,9 +212,14 @@ export default function PagoBluScreen() {
             </View>
 
             <View style={styles.capNote}>
-              <Ionicons name="information-circle-outline" size={14} color={COLORS.dinersBlue} />
+              <Ionicons
+                name="information-circle-outline"
+                size={14}
+                color={COLORS.dinersBlue}
+              />
               <Text style={styles.capNoteText}>
-                El descuento respeta el tope mensual del 40% de tu comisión Diners.
+                El descuento respeta el tope mensual del 40% de tu comisión
+                Diners.
               </Text>
             </View>
           </View>
@@ -175,7 +229,9 @@ export default function PagoBluScreen() {
         <View style={styles.totalCard}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>${MOCK_PURCHASE_AMOUNT.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>
+              ${MOCK_PURCHASE_AMOUNT.toFixed(2)}
+            </Text>
           </View>
           {discount > 0 && (
             <View style={styles.totalRow}>
@@ -198,7 +254,8 @@ export default function PagoBluScreen() {
           <View style={styles.remainingRow}>
             <Ionicons name="leaf-outline" size={14} color="#277855" />
             <Text style={styles.remainingText}>
-              Saldo restante: {(validPoints - pointsUsed).toLocaleString()} EcoPoints
+              Saldo restante: {(validPoints - pointsUsed).toLocaleString()}{" "}
+              EcoPoints
             </Text>
           </View>
         )}
@@ -206,14 +263,17 @@ export default function PagoBluScreen() {
         {/* ── Botón de pago ── */}
         <TouchableOpacity style={styles.payBtn} onPress={handlePay}>
           <Ionicons name="card" size={20} color="#FFFFFF" />
-          <Text style={styles.payBtnText}>Pagar ${total.toFixed(2)} con Diners</Text>
+          <Text style={styles.payBtnText}>
+            Pagar ${total.toFixed(2)} con Diners
+          </Text>
         </TouchableOpacity>
 
         {/* ── Nota demo ── */}
         <View style={styles.demoNote}>
           <Ionicons name="flask-outline" size={14} color={COLORS.dinersBlue} />
           <Text style={styles.demoNoteText}>
-            Esta es una simulación. En producción, el pago BLU se procesa con tu tarjeta Diners Club.
+            Esta es una simulación. En producción, el pago BLU se procesa con tu
+            tarjeta Diners Club.
           </Text>
         </View>
       </ScrollView>
@@ -226,13 +286,15 @@ export default function PagoBluScreen() {
 // ---------------------------------------------------------------------------
 
 function PaymentSuccess({
-  router,
   total,
   pointsUsed,
+  co2Kg,
+  onBack,
 }: {
-  router: ReturnType<typeof useRouter>;
   total: number;
   pointsUsed: number;
+  co2Kg: number;
+  onBack: () => void;
 }) {
   return (
     <SafeAreaView style={[styles.container, styles.successContainer]}>
@@ -253,14 +315,22 @@ function PaymentSuccess({
           </View>
         )}
 
+        {co2Kg > 0 && (
+          <View style={styles.successPointsRow}>
+            <Ionicons name="earth" size={16} color="#277855" />
+            <Text style={styles.successPointsText}>
+              +{co2Kg.toFixed(2)} kg CO₂ evitado
+            </Text>
+          </View>
+        )}
+
         <View style={styles.successDemoBadge}>
-          <Text style={styles.successDemoText}>Transacción simulada — Demo</Text>
+          <Text style={styles.successDemoText}>
+            Transacción simulada — Demo
+          </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.successBtn}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.successBtn} onPress={onBack}>
           <Text style={styles.successBtnText}>Volver a EcoClub</Text>
         </TouchableOpacity>
       </View>

@@ -1,5 +1,5 @@
 /**
- * tourSteps.ts — Fuente única de verdad del tour guiado de 5 pasos de EcoClub.
+ * tourSteps.ts — Fuente única de verdad del tour guiado de 7 pasos de EcoClub.
  *
  * Cada paso declara:
  *  - screen:    pantalla lógica donde vive el elemento (Home, EcoClub, …)
@@ -15,7 +15,14 @@ import { type useRouter } from "expo-router";
 
 type Router = ReturnType<typeof useRouter>;
 
-export type TourScreen = "Home" | "EcoClub" | "RetoMetro" | "Menu" | "PagarBLU";
+export type TourScreen =
+  | "Home"
+  | "EcoClub"
+  | "RetoMetro"
+  | "KmVerdes"
+  | "ReciVeci"
+  | "Menu"
+  | "PagarBLU";
 
 export interface TourStep {
   id: string;
@@ -47,6 +54,16 @@ export const TOUR_SCREEN_ROUTES: Record<TourScreen, TourScreenRoute> = {
   RetoMetro: {
     pathname: "/ecoclub/metro",
     href: "/(tabs)/ecoclub/metro",
+    kind: "push",
+  },
+  KmVerdes: {
+    pathname: "/ecoclub/km-verdes",
+    href: "/(tabs)/ecoclub/km-verdes",
+    kind: "push",
+  },
+  ReciVeci: {
+    pathname: "/ecoclub/reciveci",
+    href: "/(tabs)/ecoclub/reciveci",
     kind: "push",
   },
   Menu: { pathname: "/menu", href: "/(tabs)/menu", kind: "tab" },
@@ -94,6 +111,26 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Reto Metro & Recargas",
     description:
       "Gestiona tu recarga automática del Metro de Quito y revisa tu historial de viajes sostenibles.",
+    tooltipPosition: "bottom",
+    padding: 10,
+  },
+  {
+    id: "step-strava-km-verdes",
+    targetId: "strava-connection-section",
+    screen: "KmVerdes",
+    title: "Km Verdes con Strava",
+    description:
+      "Conecta tu cuenta de Strava: cada kilómetro que corres, caminas o pedaleas se registra solo y suma EcoPoints.",
+    tooltipPosition: "bottom",
+    padding: 10,
+  },
+  {
+    id: "step-reciveci-recoleccion",
+    targetId: "reciveci-collection-section",
+    screen: "ReciVeci",
+    title: "Recicla con ReciVeci",
+    description:
+      "Programa la recolección de tu reciclaje: cada entrega confirmada suma kilos a tu meta y EcoPoints a tu cuenta.",
     tooltipPosition: "bottom",
     padding: 10,
   },

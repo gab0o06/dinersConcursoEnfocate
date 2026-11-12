@@ -11,6 +11,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 import EcoHeader from "../../../components/EcoHeader";
 import { useEcoStore } from "../../../store/useEcoStore";
+import { useTourHighlight } from "../../../hooks/useTourHighlight";
+import { useTourScroll } from "../../../hooks/useTourScroll";
 
 // --- Componente del Medidor de Medio Arco ---
 const HalfGauge = ({ current, max }: { current: number; max: number }) => {
@@ -104,6 +106,8 @@ const HalfGauge = ({ current, max }: { current: number; max: number }) => {
 
 export default function ReciVeciScreen() {
   const router = useRouter();
+  const collectionTarget = useTourHighlight("reciveci-collection-section");
+  const tourScroll = useTourScroll();
 
   // — Store —
   const addReciVeciDelivery = useEcoStore((s) => s.addReciVeciDelivery);
@@ -148,6 +152,7 @@ export default function ReciVeciScreen() {
       />
 
       <ScrollView
+        {...tourScroll}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
@@ -180,8 +185,8 @@ export default function ReciVeciScreen() {
           </View>
         </View>
 
-        {/* Sección del Gráfico Central */}
-        <View style={styles.progressSection}>
+        {/* Progreso + programar recolección (target paso 5 del tour) */}
+        <View style={styles.progressSection} {...collectionTarget}>
           <HalfGauge current={Math.min(reciVeciKgTotal, metaKg)} max={metaKg} />
 
           <Text style={styles.progressTitle}>Tu progreso de reciclaje</Text>

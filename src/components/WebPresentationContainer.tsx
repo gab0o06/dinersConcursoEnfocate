@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useEcoStore } from "../store/useEcoStore";
-import { useTour } from "../contexts/TourContext";
+import { useTourActions } from "../contexts/TourContext";
 
 interface Props {
   children: React.ReactNode;
@@ -20,7 +20,7 @@ export default function WebPresentationContainer({ children }: Props) {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const [useMobileFrame, setUseMobileFrame] = useState(true);
-  const { startTour } = useTour();
+  const { startTour } = useTourActions();
 
   const isRegistered = useEcoStore((s) => s.isRegistered);
   const setRegistered = useEcoStore((s) => s.setRegistered);

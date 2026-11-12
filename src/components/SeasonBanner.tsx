@@ -3,7 +3,11 @@ import React, { useMemo, useState } from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import rawSeasons from "../data/mock/temporadas.json";
-import { getActiveSeason, parseSeasonConfig, type Season } from "../lib/seasons";
+import {
+  getActiveSeason,
+  parseSeasonConfig,
+  type Season,
+} from "../lib/seasons";
 
 interface SeasonBannerProps {
   /** Fecha de referencia para evaluar si hay una temporada activa (default: hoy) */
@@ -36,70 +40,109 @@ export default function SeasonBanner({
     return null;
   }
 
-  const { banner, multiplicadoresMcc, retosEspeciales, inicio, fin, rankingGrupal } =
-    activeSeason;
+  const {
+    banner,
+    multiplicadoresMcc,
+    retosEspeciales,
+    inicio,
+    fin,
+    rankingGrupal,
+  } = activeSeason;
 
   return (
     <>
-      <View style={styles.card}>
-        <View style={styles.topRow}>
-          <View style={styles.titleRow}>
-            <View style={styles.badgePulse}>
-              <View style={styles.pulseDot} />
-              <Text style={styles.badgePulseText}>CAMPAÑA ACTIVA</Text>
-            </View>
-            <Text style={styles.title}>{banner.titulo}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.infoButton}
-            onPress={() => setModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="information-circle-outline" size={20} color="#277855" />
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.description}>{banner.descripcion}</Text>
-
-        {/* Multiplicadores MCC Activos */}
-        <View style={styles.multipliersRow}>
-          {multiplicadoresMcc[4111] && (
-            <View style={styles.multiplierPill}>
-              <Ionicons name="train" size={13} color="#277855" />
-              <Text style={styles.multiplierPillText}>
-                Metro {multiplicadoresMcc[4111]}×
-              </Text>
-            </View>
-          )}
-
-          {multiplicadoresMcc[5999] && (
-            <View style={styles.multiplierPill}>
-              <Ionicons name="storefront" size={13} color="#277855" />
-              <Text style={styles.multiplierPillText}>
-                Eco-Aliados {multiplicadoresMcc[5999]}×
-              </Text>
-            </View>
-          )}
-
-          {retosEspeciales.length > 0 && (
-            <View style={[styles.multiplierPill, styles.specialPill]}>
-              <MaterialCommunityIcons name="flag-checkered" size={13} color="#D97706" />
-              <Text style={[styles.multiplierPillText, { color: "#B45309" }]}>
-                {retosEspeciales[0].nombre}
-              </Text>
-            </View>
-          )}
-        </View>
-
+      {variant === "compact" ? (
+        // Variante compacta: una sola línea con estado + título; el detalle
+        // completo sigue disponible en el modal.
         <TouchableOpacity
-          style={styles.ctaRow}
+          style={styles.compactCard}
           onPress={() => setModalVisible(true)}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`Campaña activa: ${banner.titulo}. Ver condiciones`}
         >
-          <Text style={styles.ctaText}>Ver multiplicadores y condiciones</Text>
-          <Ionicons name="chevron-forward" size={14} color="#277855" />
+          <View style={styles.pulseDot} />
+          <Text style={styles.badgePulseText}>CAMPAÑA ACTIVA</Text>
+          <Text style={styles.compactTitle} numberOfLines={1}>
+            {banner.titulo}
+          </Text>
+          <Ionicons
+            name="information-circle-outline"
+            size={18}
+            color="#277855"
+          />
         </TouchableOpacity>
-      </View>
+      ) : (
+        <View style={styles.card}>
+          <View style={styles.topRow}>
+            <View style={styles.titleRow}>
+              <View style={styles.badgePulse}>
+                <View style={styles.pulseDot} />
+                <Text style={styles.badgePulseText}>CAMPAÑA ACTIVA</Text>
+              </View>
+              <Text style={styles.title}>{banner.titulo}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.infoButton}
+              onPress={() => setModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color="#277855"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.description}>{banner.descripcion}</Text>
+
+          {/* Multiplicadores MCC Activos */}
+          <View style={styles.multipliersRow}>
+            {multiplicadoresMcc[4111] && (
+              <View style={styles.multiplierPill}>
+                <Ionicons name="train" size={13} color="#277855" />
+                <Text style={styles.multiplierPillText}>
+                  Metro {multiplicadoresMcc[4111]}×
+                </Text>
+              </View>
+            )}
+
+            {multiplicadoresMcc[5999] && (
+              <View style={styles.multiplierPill}>
+                <Ionicons name="storefront" size={13} color="#277855" />
+                <Text style={styles.multiplierPillText}>
+                  Eco-Aliados {multiplicadoresMcc[5999]}×
+                </Text>
+              </View>
+            )}
+
+            {retosEspeciales.length > 0 && (
+              <View style={[styles.multiplierPill, styles.specialPill]}>
+                <MaterialCommunityIcons
+                  name="flag-checkered"
+                  size={13}
+                  color="#D97706"
+                />
+                <Text style={[styles.multiplierPillText, { color: "#B45309" }]}>
+                  {retosEspeciales[0].nombre}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.ctaRow}
+            onPress={() => setModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.ctaText}>
+              Ver multiplicadores y condiciones
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color="#277855" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Modal explicativo de la temporada */}
       <Modal
@@ -127,7 +170,9 @@ export default function SeasonBanner({
               </Text>
             </View>
 
-            <Text style={styles.modalSectionTitle}>Multiplicadores Automáticos</Text>
+            <Text style={styles.modalSectionTitle}>
+              Multiplicadores Automáticos
+            </Text>
             <View style={styles.benefitList}>
               <View style={styles.benefitItem}>
                 <Ionicons name="train-outline" size={18} color="#277855" />
@@ -136,7 +181,8 @@ export default function SeasonBanner({
                     Metro de Quito (MCC 4111) · 2× EcoPoints
                   </Text>
                   <Text style={styles.benefitItemDesc}>
-                    Duplica tus puntos en cada recarga automática con Diners Club.
+                    Duplica tus puntos en cada recarga automática con Diners
+                    Club.
                   </Text>
                 </View>
               </View>
@@ -148,7 +194,8 @@ export default function SeasonBanner({
                     Comercios Eco-Aliados (MCC 5999) · 1.5× extra
                   </Text>
                   <Text style={styles.benefitItemDesc}>
-                    Multiplicador estacional aplicado en tus compras sostenibles.
+                    Multiplicador estacional aplicado en tus compras
+                    sostenibles.
                   </Text>
                 </View>
               </View>
@@ -158,10 +205,12 @@ export default function SeasonBanner({
                   <Ionicons name="bicycle-outline" size={18} color="#D97706" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.benefitItemTitle}>
-                      Reto: {retosEspeciales[0].nombre} (+{retosEspeciales[0].ptsMeta} pts)
+                      Reto: {retosEspeciales[0].nombre} (+
+                      {retosEspeciales[0].ptsMeta} pts)
                     </Text>
                     <Text style={styles.benefitItemDesc}>
-                      Completa trayectos en bicicleta o a pie durante la temporada.
+                      Completa trayectos en bicicleta o a pie durante la
+                      temporada.
                     </Text>
                   </View>
                 </View>
@@ -175,7 +224,8 @@ export default function SeasonBanner({
                       Ranking Grupal de Temporada
                     </Text>
                     <Text style={styles.benefitItemDesc}>
-                      Tus puntos se suman automáticamente al tablero de tu empresa o universidad.
+                      Tus puntos se suman automáticamente al tablero de tu
+                      empresa o universidad.
                     </Text>
                   </View>
                 </View>
@@ -196,6 +246,26 @@ export default function SeasonBanner({
 }
 
 const styles = StyleSheet.create({
+  compactCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1.5,
+    borderColor: "#BBF7D0",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginHorizontal: 20,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  compactTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#14532D",
+  },
   card: {
     backgroundColor: "#F0FDF4",
     borderWidth: 1.5,
