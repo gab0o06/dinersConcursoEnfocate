@@ -116,7 +116,7 @@ export default function WebPresentationContainer({ children }: Props) {
               isRegistered ? styles.stateActive : styles.stateInactive,
             ]}
             onPress={() => setRegistered(!isRegistered)}
-            title="Alterna entre vista de usuario nuevo (Capa 0) y registrado"
+            accessibilityLabel="Alterna entre vista de usuario nuevo (Capa 0) y registrado"
           >
             <MaterialCommunityIcons
               name={isRegistered ? "check-circle" : "compass-outline"}
@@ -131,7 +131,7 @@ export default function WebPresentationContainer({ children }: Props) {
           <TouchableOpacity
             style={styles.viewModeBtn}
             onPress={() => setUseMobileFrame(false)}
-            title="Expandir a pantalla completa"
+            accessibilityLabel="Expandir a pantalla completa"
           >
             <Ionicons name="expand" size={15} color="#94A3B8" />
           </TouchableOpacity>
