@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ScrollView,
@@ -43,6 +43,7 @@ const MOCK_PURCHASE_CO2_KG = parseFloat(
 
 export default function PagoBluScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const { endTour } = useTourActions();
 
   // Store
@@ -91,11 +92,15 @@ export default function PagoBluScreen() {
     setPaid(true);
   };
 
-  /** Cierra el tour y reinicia el stack de EcoClub sin historial hacia atrás */
-  const backToEcoClub = () => {
+  /** Cierra el tour y regresa al origen (Menú si vino de Menú, o EcoClub) */
+  const handleBack = () => {
     endTour();
     if (router.canDismiss()) router.dismissAll();
-    router.replace("/(tabs)/ecoclub");
+    if (from === "menu") {
+      router.replace("/(tabs)/menu");
+    } else {
+      router.replace("/(tabs)/ecoclub");
+    }
   };
 
   if (paid) {
@@ -104,7 +109,7 @@ export default function PagoBluScreen() {
         total={total}
         pointsUsed={pointsUsed}
         co2Kg={MOCK_PURCHASE_CO2_KG}
-        onBack={backToEcoClub}
+        onBack={handleBack}
       />
     );
   }
@@ -113,7 +118,7 @@ export default function PagoBluScreen() {
     <SafeAreaView style={styles.container}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={COLORS.dinersBlue} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pago BLU</Text>

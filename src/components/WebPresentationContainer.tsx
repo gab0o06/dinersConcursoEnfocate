@@ -365,6 +365,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.3)",
     borderRadius: 2,
     zIndex: 9999,
+    pointerEvents: "none",
   },
   pitchFooter: {
     paddingVertical: 10,

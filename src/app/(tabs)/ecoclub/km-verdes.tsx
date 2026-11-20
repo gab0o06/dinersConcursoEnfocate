@@ -463,7 +463,7 @@ export default function KmVerdesScreen() {
         {/* Cabecera de Navegación y Estado */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.replace("/(tabs)/ecoclub")}
             style={styles.backBtn}
             activeOpacity={0.7}
           >

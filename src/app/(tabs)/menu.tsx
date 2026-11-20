@@ -47,14 +47,22 @@ export default function MenuScreen() {
           iconColor: "#277855",
           label: "Canje de EcoPoints",
           sublabel: `${validPoints} pts disponibles para canje`,
-          onPress: () => router.push("/(tabs)/ecoclub/recompensas"),
+          onPress: () =>
+            router.push({
+              pathname: "/(tabs)/ecoclub/recompensas",
+              params: { from: "menu" },
+            }),
         },
         {
           icon: "cart-outline",
           iconColor: "#277855",
           label: "Pagar con BLU",
           sublabel: "Aplica tus EcoPoints directo en compras",
-          onPress: () => router.push("/(tabs)/ecoclub/pago-blu"),
+          onPress: () =>
+            router.push({
+              pathname: "/(tabs)/ecoclub/pago-blu",
+              params: { from: "menu" },
+            }),
           tourId: payWithBluTarget.nativeID,
         },
       ],

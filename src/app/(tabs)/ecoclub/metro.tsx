@@ -77,7 +77,7 @@ export default function MetroDinersScreen() {
         {/* Cabecera y Puntos */}
         <View style={styles.headerRow}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.replace("/(tabs)/ecoclub")}
             style={styles.backButton}
           >
             <Ionicons name="chevron-back" size={24} color="#000" />

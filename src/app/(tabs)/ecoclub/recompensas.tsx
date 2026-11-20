@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -146,6 +146,15 @@ function buildExtendedOptions(
 
 export default function RecompensasScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+
+  const handleBack = () => {
+    if (from === "menu") {
+      router.replace("/(tabs)/menu");
+    } else {
+      router.replace("/(tabs)/ecoclub");
+    }
+  };
 
   // Store
   const redeemOptions = useEcoStore((s) => s.redeemOptions);
@@ -205,7 +214,7 @@ export default function RecompensasScreen() {
     <SafeAreaView style={styles.container}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={COLORS.dinersBlue} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Recompensas</Text>
