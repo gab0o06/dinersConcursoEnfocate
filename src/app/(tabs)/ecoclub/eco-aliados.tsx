@@ -107,7 +107,7 @@ export default function EcoAliadosScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.replace("/(tabs)/ecoclub")}
           style={styles.backButton}
           activeOpacity={0.7}
         >
