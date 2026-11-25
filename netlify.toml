@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm expo export -p web"
+  command = "pnpm expo export -p web && cp mejoras/pitchFinal.html dist/pitch.html"
   publish = "dist"
 
 [build.environment]
